@@ -30,6 +30,10 @@ class UltimateAscensionRobot : public IterativeRobot {
 	static const int ENCODER_2_A_CHANNEL = 3;
 	static const int ENCODER_2_B_CHANNEL = 4;
 	
+	//analog channel for gyro
+	//needs to be 1 or 2 or it WON'T WORK!
+	static const int GYRO_CHANNEL = 1;
+	
 	//These let us change the direction of the elevator (1 or -1):
 	static const int ELEVATOR_TOP_DIRECTION = 1;
 	static const int ELEVATOR_BOTTOM_DIRECTION = 1;
@@ -62,6 +66,8 @@ class UltimateAscensionRobot : public IterativeRobot {
 	
 	Encoder * encoder1;
 	Encoder * encoder2;
+	
+	Gyro * gyro;
 	
 	RobotDrive * drive;
 	Gamepad * gamepad;
@@ -121,6 +127,8 @@ public:
 		encoder1 = new Encoder(ENCODER_1_A_CHANNEL, ENCODER_1_B_CHANNEL);
 		encoder2 = new Encoder(ENCODER_2_A_CHANNEL, ENCODER_2_B_CHANNEL);
 
+		gyro = new Gyro(GYRO_CHANNEL);
+		
 		//Names the gamepad
 		gamepad = new Gamepad(1);
 		
@@ -173,6 +181,7 @@ public:
 		//Gives the values to the victors:
 		drive->TankDrive(leftSpeed, rightSpeed);
 		
+		//starts shooter when button is pressed:
 		if (gamepad->GetNumberedButton(FIRE_SHOOTER_BUTTON)){
 			shooter_wheel->Set(throttle);
 			lcd->PrintfLine(DriverStationLCD::kUser_Line2, "Throttle at: %d%%", (int) (throttle * 100));
@@ -217,8 +226,7 @@ public:
 		}
 		
 		//Displays speeds to Driver Station
-		lcd->PrintfLine(DriverStationLCD::kUser_Line1,"left: %f",leftSpeed);
-		lcd->PrintfLine(DriverStationLCD::kUser_Line2,"right: %f",rightSpeed);
+		lcd->PrintfLine(DriverStationLCD::kUser_Line1,"l/r: %f/%f",leftSpeed, rightSpeed);
 		
 		//Displays gears
 		if (gear_shift->Get() == HIGH_GEAR)
@@ -230,11 +238,18 @@ public:
 		lcd->PrintfLine(DriverStationLCD::kUser_Line3, "elevator at %f", elevatorSpeed);
 
 		//Displays encoder values
+		//uncomment if you want to see encoder values, we removed them to get more lines
+		/*
 		int encoder_value1 = encoder1->Get();
 		lcd->PrintfLine(DriverStationLCD::kUser_Line5, "encoder at %i", encoder_value1);
 		
 		int encoder_value2 = encoder2->Get();
 		lcd->PrintfLine(DriverStationLCD::kUser_Line6, "encoder at %i", encoder_value2);
+		*/
+		
+		//Displays gyro value
+		float gyro_angle = gyro->GetAngle();
+		lcd->PrintfLine(DriverStationLCD::kUser_Line5, "Gyro at %f", gyro_angle);
 		
 		//Updates Driver Station
 		lcd->UpdateLCD();		
