@@ -32,7 +32,7 @@ MODE_DIR := NonDebug
 endif
 OBJ_DIR := .
 WS_ROOT_DIR := C:/
-PRJ_ROOT_DIR := $(WS_ROOT_DIR)//FRC830-DriveTrain/DriveTrain
+PRJ_ROOT_DIR := $(WS_ROOT_DIR)//FRC830-2013/2013robot
 
 
 
@@ -162,21 +162,16 @@ BuiltinDefaultCode_partialImage/$(MODE_DIR)/% : LIBPATH =
 BuiltinDefaultCode_partialImage/$(MODE_DIR)/% : LIBS = 
 BuiltinDefaultCode_partialImage/$(MODE_DIR)/% : OBJ_DIR := BuiltinDefaultCode_partialImage/$(MODE_DIR)
 
-BuiltinDefaultCode_partialImage/$(MODE_DIR)/Objects/DriveTrain/DriveEncoder.o : $(PRJ_ROOT_DIR)/DriveEncoder.cpp $(FORCE_FILE_BUILD)
+BuiltinDefaultCode_partialImage/$(MODE_DIR)/Objects/2013robot/Gamepad.o : $(PRJ_ROOT_DIR)/Gamepad.cpp $(FORCE_FILE_BUILD)
 	$(TRACE_FLAG)if [ ! -d "`dirname "$@"`" ]; then mkdir -p "`dirname "$@"`"; fi;echo "building $@"; $(TOOL_PATH)ccppc $(DEBUGFLAGS_C++-Compiler) $(CC_ARCH_SPEC) -ansi -Wall  -MD -MP -mlongcall $(ADDED_C++FLAGS) $(IDE_INCLUDES) $(ADDED_INCLUDES) -DCPU=$(CPU) -DTOOL_FAMILY=$(TOOL_FAMILY) -DTOOL=$(TOOL) -D_WRS_KERNEL   $(DEFINES) -o "$@" -c "$<"
 
 
-BuiltinDefaultCode_partialImage/$(MODE_DIR)/Objects/DriveTrain/DriveRobot.o : $(PRJ_ROOT_DIR)/DriveRobot.cpp $(FORCE_FILE_BUILD)
+BuiltinDefaultCode_partialImage/$(MODE_DIR)/Objects/2013robot/UltimateAscensionRobot.o : $(PRJ_ROOT_DIR)/UltimateAscensionRobot.cpp $(FORCE_FILE_BUILD)
 	$(TRACE_FLAG)if [ ! -d "`dirname "$@"`" ]; then mkdir -p "`dirname "$@"`"; fi;echo "building $@"; $(TOOL_PATH)ccppc $(DEBUGFLAGS_C++-Compiler) $(CC_ARCH_SPEC) -ansi -Wall  -MD -MP -mlongcall $(ADDED_C++FLAGS) $(IDE_INCLUDES) $(ADDED_INCLUDES) -DCPU=$(CPU) -DTOOL_FAMILY=$(TOOL_FAMILY) -DTOOL=$(TOOL) -D_WRS_KERNEL   $(DEFINES) -o "$@" -c "$<"
 
 
-BuiltinDefaultCode_partialImage/$(MODE_DIR)/Objects/DriveTrain/Gamepad.o : $(PRJ_ROOT_DIR)/Gamepad.cpp $(FORCE_FILE_BUILD)
-	$(TRACE_FLAG)if [ ! -d "`dirname "$@"`" ]; then mkdir -p "`dirname "$@"`"; fi;echo "building $@"; $(TOOL_PATH)ccppc $(DEBUGFLAGS_C++-Compiler) $(CC_ARCH_SPEC) -ansi -Wall  -MD -MP -mlongcall $(ADDED_C++FLAGS) $(IDE_INCLUDES) $(ADDED_INCLUDES) -DCPU=$(CPU) -DTOOL_FAMILY=$(TOOL_FAMILY) -DTOOL=$(TOOL) -D_WRS_KERNEL   $(DEFINES) -o "$@" -c "$<"
-
-
-OBJECTS_BuiltinDefaultCode_partialImage = BuiltinDefaultCode_partialImage/$(MODE_DIR)/Objects/DriveTrain/DriveEncoder.o \
-	 BuiltinDefaultCode_partialImage/$(MODE_DIR)/Objects/DriveTrain/DriveRobot.o \
-	 BuiltinDefaultCode_partialImage/$(MODE_DIR)/Objects/DriveTrain/Gamepad.o
+OBJECTS_BuiltinDefaultCode_partialImage = BuiltinDefaultCode_partialImage/$(MODE_DIR)/Objects/2013robot/Gamepad.o \
+	 BuiltinDefaultCode_partialImage/$(MODE_DIR)/Objects/2013robot/UltimateAscensionRobot.o
 
 BuiltinDefaultCode_partialImage/$(MODE_DIR)/BuiltinDefaultCode_partialImage.o : $(OBJECTS_BuiltinDefaultCode_partialImage)
 	$(TRACE_FLAG)if [ ! -d "`dirname "$@"`" ]; then mkdir -p "`dirname "$@"`"; fi;echo "building $@"; $(TOOL_PATH)ccppc -r -nostdlib -Wl,-X  -o "$@" $(OBJECTS_BuiltinDefaultCode_partialImage) $(LIBPATH) $(LIBS) $(ADDED_LIBPATH) $(ADDED_LIBS)  && if [ "$(EXPAND_DBG)" = "1" ]; then plink "$@";fi
@@ -190,7 +185,7 @@ BuiltinDefaultCode_partialImage/$(MODE_DIR)/BuiltinDefaultCode_partialImage_clea
 
 force : 
 
-DEP_FILES := BuiltinDefaultCode_partialImage/$(MODE_DIR)/Objects/DriveTrain/DriveEncoder.d BuiltinDefaultCode_partialImage/$(MODE_DIR)/Objects/DriveTrain/DriveRobot.d BuiltinDefaultCode_partialImage/$(MODE_DIR)/Objects/DriveTrain/Gamepad.d
+DEP_FILES := BuiltinDefaultCode_partialImage/$(MODE_DIR)/Objects/2013robot/Gamepad.d BuiltinDefaultCode_partialImage/$(MODE_DIR)/Objects/2013robot/UltimateAscensionRobot.d
 -include $(DEP_FILES)
 
 

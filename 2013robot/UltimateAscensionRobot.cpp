@@ -16,6 +16,9 @@ class UltimateAscensionRobot : public IterativeRobot {
 	static const int BUMP_UP_CHANNEL = 5;
 	static const int INTAKE_CHANNEL = 6;
 	
+	//shooter PWM
+	static const int FLYWHEEL_CHANNEL = 7;
+	
 	//These let us change the direction of the rollers (1 or -1):
 	static const int BUMP_UP_DIRECTION = 1;
 	static const int INTAKE_DIRECTION = 1;
@@ -39,12 +42,16 @@ class UltimateAscensionRobot : public IterativeRobot {
 	static const int SHIFT_HIGH_BUTTON = 5;
 	static const int SHIFT_LOW_BUTTON = 7;
 	
+	//shooter control button(s):
+	static const int FIRE_SHOOTER_BUTTON = 2;
+	
 	//Solenoid channel:
 	static const int GEAR_SHIFT_SOLENOID_CHANNEL = 1;
 	
 	//Changing gear states:
 	static const bool HIGH_GEAR = false;
 	static const bool LOW_GEAR = true;
+	
 	
 	//Floats which are used for roller and elevator speeds:
 	float rollerSpeed;
@@ -66,8 +73,11 @@ class UltimateAscensionRobot : public IterativeRobot {
 	Victor * bump_up;
 	Victor * intake;
 	
-	Victor * liftTop;
-	Victor * liftBottom;
+	Victor * lift_top;
+	Victor * lift_bottom;
+	
+	Victor * shooter_wheel;
+	float throttle;
 	
 	//Here we get to the REAL code
 public:
@@ -88,12 +98,15 @@ public:
 				);
 		
 		//Names lift victors
-		liftTop = new Victor(LIFT_TOP);
-		liftBottom = new Victor(LIFT_BOTTOM);
+		lift_top = new Victor(LIFT_TOP);
+		lift_bottom = new Victor(LIFT_BOTTOM);
 		
 		//Names the rollers
 		bump_up = new Victor(BUMP_UP_CHANNEL);
 		intake = new Victor(INTAKE_CHANNEL);
+		
+		shooter_wheel = new Victor(FLYWHEEL_CHANNEL);
+		throttle = 0.7f;
 		
 		//Set the roller/elevator motors to 0 just in case
 		rollerSpeed = 0.0;
@@ -114,7 +127,6 @@ public:
 		//Names the Driver Station
 		lcd = DriverStationLCD::GetInstance();
 	}
-	//Esteven wuzz heer
 	
 	//Stops driving in disabled
 	void DisabledInit(){
@@ -161,6 +173,12 @@ public:
 		//Gives the values to the victors:
 		drive->TankDrive(leftSpeed, rightSpeed);
 		
+		if (gamepad->GetNumberedButton(FIRE_SHOOTER_BUTTON)){
+			shooter_wheel->Set(throttle);
+			lcd->PrintfLine(DriverStationLCD::kUser_Line2, "Throttle at: %d%%", (int) (throttle * 100));
+			
+		}
+		
 		//The Fancy Roller Code:
 		//Speeds & slows the rollers:
 		if (rollerSpeed <= 0.99 && gamepad->GetNumberedButton(ROLLER_SPEED_UP)){
@@ -188,8 +206,8 @@ public:
 
 		
 		//Sets the elevator victors
-		liftTop->Set(elevatorSpeed*ELEVATOR_TOP_DIRECTION);
-		liftBottom->Set(elevatorSpeed*ELEVATOR_BOTTOM_DIRECTION);		
+		lift_top->Set(elevatorSpeed*ELEVATOR_TOP_DIRECTION);
+		lift_bottom->Set(elevatorSpeed*ELEVATOR_BOTTOM_DIRECTION);		
 		
 		//Shifts them geers:
 		if (gamepad->GetNumberedButton(SHIFT_LOW_BUTTON)){
