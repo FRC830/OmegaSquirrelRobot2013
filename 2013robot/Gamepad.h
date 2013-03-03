@@ -37,6 +37,10 @@ public:
     float GetRawAxis(UINT32 axis);
 
     bool GetNumberedButton(unsigned buttonNumber);
+    //returns if the button has become pressed since the last time it was checked
+    bool GetNumberedButtonPressed(unsigned buttonNumber);
+    //returns if the button has stopped being pressed since the last time it was checked
+    bool GetNumberedButtonReleased(unsigned buttonNumber);
     bool GetLeftPush();
     bool GetRightPush();
 
@@ -53,6 +57,7 @@ protected:
     static const unsigned kLeftAnalogStickButton = 11;
     static const unsigned kRightAnalogStickButton = 12;
 
+    bool buttons_pressed[12];
     DriverStation *ap_ds;
     UINT32 a_port;
 };

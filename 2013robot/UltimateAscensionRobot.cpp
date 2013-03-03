@@ -72,8 +72,6 @@ class UltimateAscensionRobot : public IterativeRobot {
 	float rollerSpeed;
 	float elevatorSpeed;
 
-	float lastGyro;
-	float dGyro;
 	//These are creating objects for motors & such
 	Solenoid * gear_shift;
 	Solenoid * deploy_shooter;
@@ -84,8 +82,12 @@ class UltimateAscensionRobot : public IterativeRobot {
 	
 	Gyro * gyro;
 	
+	bool arcade_drive;
+	bool pilot_driving;
+	static const float COPILOT_ROTATION = 0.1;
 	PIDDrive * drive;
-	Gamepad * gamepad;
+	Gamepad * pilot;
+	Gamepad * copilot;
 	DriverStationLCD * lcd;
 	
 	Victor * left_drive;
@@ -160,7 +162,7 @@ public:
 				right_drive,
 				0.1f, 0.0f, 0.0f
 				);
-		
+		arcade_drive = true;
 		//Names lift victors
 		
 		//Names the rollers
@@ -172,6 +174,8 @@ public:
 		shooter = new Shooter();
 		throttle = 0.7f;
 		
+		pilot_driving = false;
+		
 		//Set the roller/elevator motors to 0 just in case
 		rollerSpeed = 0.0;
 		
@@ -182,16 +186,11 @@ public:
 		deploy_shooter = new Solenoid(DEPLOY_SHOOTER_SOLENOID_CHANNEL);
 		deploy_feeder = new Solenoid(DEPLOY_FEEDER_SOLENOID_CHANNEL);
 		
-		lastGyro = 0.00;
-		dGyro = 0.00;
-		//Naes encoders
-//		encoder1 = new Encoder(ENCODER_1_A_CHANNEL, ENCODER_1_B_CHANNEL);
-//		encoder2 = new Encoder(ENCODER_2_A_CHANNEL, ENCODER_2_B_CHANNEL);
-
 		gyro = new Gyro(GYRO_CHANNEL);
 		gyro->Reset();
 		//Names the gamepad
-		gamepad = new Gamepad(1);
+		pilot = new Gamepad(1);
+		copilot = new Gamepad(2);
 		
 		//Names the Driver Station
 		lcd = DriverStationLCD::GetInstance();
@@ -209,14 +208,21 @@ public:
 	}
 	
 	void TeleopInit(){
-		//Starts the encoders
-		//encoder1->Start();
-		//encoder2->Start();
+
 	}
 	
 	void DisabledPeriodic(){
-		//Constantly stops the drive (failsafe. Maybe.)
 		drive->ArcadeDrive(0.0f, 0.0f);
+		if (pilot->GetNumberedButton(5)){
+			arcade_drive = true;
+			lcd->PrintfLine(DriverStationLCD::kUser_Line1, "In arcade drive");
+			lcd->UpdateLCD();
+		}
+		if (pilot->GetNumberedButton(6)){
+			arcade_drive = false;
+			lcd->PrintfLine(DriverStationLCD::kUser_Line1, "In tank drive");
+			lcd->UpdateLCD();
+		}
 	}
 	
 	void AutonPeriodic(){
@@ -225,27 +231,24 @@ public:
 	}
 	
 	void TeleopPeriodic(){
-		//float forwardSpeed = gamepad->GetLeftY();
-		//float sideSpeed = gamepad->GetRightX();
-		//drive->ArcadeDrive(CurveAcceleration(forwardSpeed), sideSpeed);
 		
-		//This code takes the joystick values:
-		float leftSpeed = gamepad->GetLeftY();
-		float rightSpeed = -gamepad->GetRightY();
-		//This code limits the speed:
-		if (leftSpeed > 1.0f)
-			leftSpeed = 1.0f;
-		if (leftSpeed < -1.0f)
-			leftSpeed = -1.0f;
-		if (rightSpeed > 1.0f)
-			rightSpeed = 1.0f;
-		if (rightSpeed < -1.0f)
-			rightSpeed = -1.0f;
-		//Gives the values to the victors:
-		drive->TankDrive(leftSpeed, rightSpeed);
+		if(arcade_drive){
+			float forward_speed = pilot->GetLeftY();
+			float rotation = pilot->GetRightX();
+			drive->ArcadeDrive(forward_speed, rotation);
+			pilot_driving = forward_speed != 0.0f || rotation != 0.0f;
+			lcd->PrintfLine(DriverStationLCD::kUser_Line1, "In arcade drive");
+		} else {
+			float left_speed = pilot->GetLeftY();
+			float right_speed = pilot->GetRightY();
+			pilot_driving = left_speed != 0.0f || right_speed != 0.0f;
+			drive->TankDrive(left_speed, right_speed);
+			lcd->PrintfLine(DriverStationLCD::kUser_Line1, "In tank drive");
+		}
+		
 		
 		//starts shooter when button is pressed:
-		if (gamepad->GetNumberedButton(FIRE_SHOOTER_BUTTON)){
+		if (copilot->GetNumberedButton(FIRE_SHOOTER_BUTTON)){
 			shooter->flywheel->Set(throttle);
 			lcd->PrintfLine(DriverStationLCD::kUser_Line2, "Engaged at: %d%%", (int) (throttle * 100));
 		} else {
@@ -253,11 +256,23 @@ public:
 			lcd->PrintfLine(DriverStationLCD::kUser_Line2, "Disengaged at: %d%%", (int) (throttle * 100));
 		}
 		
+		if (copilot->GetDPad() == Gamepad::kUp && throttle <= 0.95){
+			throttle += 0.05;
+		}
+		if (copilot->GetDPad() == Gamepad::kDown && throttle >= 0.5){
+			throttle -= 0.05;
+		}
+		if (copilot->GetDPad() == Gamepad::kRight && !pilot_driving){
+			drive->ArcadeDrive(0.0f, COPILOT_ROTATION);
+		}
+		if (copilot->GetDPad() == Gamepad::kLeft && !pilot_driving){
+			drive->ArcadeDrive(0.0f, -COPILOT_ROTATION);
+		}
 		//The Fancy Roller Code:
 		//Speeds & slows the rollers:
-		if (rollerSpeed <= 0.99 && gamepad->GetNumberedButton(ROLLER_SPEED_UP)){
+		if (rollerSpeed <= 0.99 && copilot->GetNumberedButton(ROLLER_SPEED_UP)){
 			rollerSpeed += .01;
-		} else if (rollerSpeed >= .01 && gamepad->GetNumberedButton(ROLLER_SPEED_DOWN)){
+		} else if (rollerSpeed >= .01 && copilot->GetNumberedButton(ROLLER_SPEED_DOWN)){
 			rollerSpeed -= .01;
 		}
 		
@@ -267,14 +282,11 @@ public:
 		pickup_roller->Set(rollerSpeed * PICKUP_DIRECTION);
 		
 		//Shifts them geers:
-		if (gamepad->GetNumberedButton(SHIFT_LOW_BUTTON)){
+		if (pilot->GetNumberedButton(SHIFT_LOW_BUTTON)){
 			gear_shift->Set(LOW_GEAR);
-		} else if (gamepad->GetNumberedButton(SHIFT_HIGH_BUTTON)){
+		} else if (pilot->GetNumberedButton(SHIFT_HIGH_BUTTON)){
 			gear_shift->Set(HIGH_GEAR);
 		}
-		
-		//Displays speeds to Driver Station
-		lcd->PrintfLine(DriverStationLCD::kUser_Line1,"l/r: %f/%f",leftSpeed, rightSpeed);
 		
 		//Displays gears
 		if (gear_shift->Get() == HIGH_GEAR)
@@ -284,20 +296,11 @@ public:
 		
 		//Displays elevator speeds
 		lcd->PrintfLine(DriverStationLCD::kUser_Line3, "elevator at %f", elevatorSpeed);
-
-		 
-		//Displays gyro value
-		
-		float gyro_angle = gyro->GetAngle();
-		dGyro = lastGyro-gyro_angle;
-		lcd->PrintfLine(DriverStationLCD::kUser_Line5, "Gyro at %f", gyro_angle);
-		lcd->PrintfLine(DriverStationLCD::kUser_Line6, "DG %f",dGyro);
-		lastGyro = gyro_angle;		
+	
 		//Updates Driver Station
 		lcd->UpdateLCD();		
 	}
 	
-
 };
 
 START_ROBOT_CLASS(UltimateAscensionRobot)
