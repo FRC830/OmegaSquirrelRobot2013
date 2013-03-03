@@ -1,42 +1,48 @@
 #include "WPILib.h"
 #include "Gamepad.h"
+#include "PIDDrive.h"
 #include <cmath>
 
 class UltimateAscensionRobot : public IterativeRobot {
 
-	//Drive train PWM channels:
-	static const int DRIVE_RIGHT = 1;
-	static const int DRIVE_LEFT = 2;
 	
-	//Elevator motor PWM channels:
-	static const int LIFT_TOP = 3;
-	static const int LIFT_BOTTOM = 4;
+	//Drive train PWM channels:
+	static const int DRIVE_RIGHT_PWM = 1;
+	static const int DRIVE_LEFT_PWM = 2;
 	
 	//Roller PWM channels:
-	static const int BUMP_UP_CHANNEL = 5;
-	static const int INTAKE_CHANNEL = 6;
+	static const int ELEVATOR_FRONT_PWM = 5;
+	static const int ELEVATOR_BACK_PWM = 6;
+	static const int FEEDER_PWM = 7;
+	static const int PICK_UP_PWM = 8;
 	
 	//shooter PWM
-	static const int FLYWHEEL_CHANNEL = 7;
+	static const int FLYWHEEL_PWM = 9;
+	static const int TIPPER_PWM = 10;
 	
 	//These let us change the direction of the rollers (1 or -1):
-	static const int BUMP_UP_DIRECTION = 1;
-	static const int INTAKE_DIRECTION = 1;
+	static const int ELEVATOR_FRONT_DIRECTION = 1;
+	static const int ELEVATOR_BACK_DIRECTION = 1;
 	
 
-	//Encoder channels (duh):
-	static const int ENCODER_1_A_CHANNEL = 1;
-	static const int ENCODER_1_B_CHANNEL = 2;
-	static const int ENCODER_2_A_CHANNEL = 3;
-	static const int ENCODER_2_B_CHANNEL = 4;
+	//Encoder channels:
+	static const int ENCODER_DRIVE_RIGHT_A_CHANNEL = 1;
+	static const int ENCODER_DRIVE_RIGHT_B_CHANNEL = 2;
+	static const int ENCODER_DRIVE_LEFT_A_CHANNEL = 3;
+	static const int ENCODER_DRIVE_LEFT_B_CHANNEL = 4;
+	static const int ENCODER_SHOOTER_ANGLE_A_CHANNEL = 5;
+	static const int ENCODER_SHOOTER_ANGLE_B_CHANNEL = 6;
+	static const int ENCODER_SHOOTER_SPEED_A_CHANNEL = 7;
+	static const int ENCODER_SHOOTER_SPEED_B_CHANNEL = 8;
 	
 	//analog channel for gyro
 	//needs to be 1 or 2 or it WON'T WORK!
-	static const int GYRO_CHANNEL = 1;
+	static const int GYRO_CHANNEL = 2;
 	
 	//These let us change the direction of the elevator (1 or -1):
 	static const int ELEVATOR_TOP_DIRECTION = 1;
 	static const int ELEVATOR_BOTTOM_DIRECTION = 1;
+	static const int PICKUP_DIRECTION = 1;
 	
 	//These buttons control pick-up roller speed: 
 	static const int ROLLER_SPEED_UP = 6;
@@ -49,41 +55,93 @@ class UltimateAscensionRobot : public IterativeRobot {
 	//shooter control button(s):
 	static const int FIRE_SHOOTER_BUTTON = 2;
 	
-	//Solenoid channel:
+	//Solenoid channels:
 	static const int GEAR_SHIFT_SOLENOID_CHANNEL = 1;
+	static const int DEPLOY_SHOOTER_SOLENOID_CHANNEL = 2;
+	static const int DEPLOY_FEEDER_SOLENOID_CHANNEL = 3;
 	
-	//Changing gear states:
+	//Solenoid states:
 	static const bool HIGH_GEAR = false;
 	static const bool LOW_GEAR = true;
+	
+	static const bool SHOOTER_DEPLOYED = true;
+	static const bool FEEDER_DEPLOYED = true;
 	
 	
 	//Floats which are used for roller and elevator speeds:
 	float rollerSpeed;
 	float elevatorSpeed;
 
+	float lastGyro;
+	float dGyro;
 	//These are creating objects for motors & such
 	Solenoid * gear_shift;
+	Solenoid * deploy_shooter;
+	Solenoid * deploy_feeder;
 	
-	Encoder * encoder1;
-	Encoder * encoder2;
+	Encoder * right_drive_encoder;
+	Encoder * left_drive_encoder;
 	
 	Gyro * gyro;
 	
-	RobotDrive * drive;
+	PIDDrive * drive;
 	Gamepad * gamepad;
 	DriverStationLCD * lcd;
 	
 	Victor * left_drive;
 	Victor * right_drive;
 	
-	Victor * bump_up;
-	Victor * intake;
+	Victor * elevator_front;
+	Victor * elevator_back;
+	Victor * pickup_roller;
+	Victor * feeder;
+
 	
-	Victor * lift_top;
-	Victor * lift_bottom;
-	
-	Victor * shooter_wheel;
 	float throttle;
+	
+	//class to hold all of the shooter stuff
+	class Shooter {
+		//constants:
+		static const bool SHOOTER_DEPLOYED = true;
+	public:
+		Victor * flywheel;
+		Victor * tipper;
+		Encoder * angle;
+		Encoder * speed;
+		Solenoid * deployer;
+		PIDController * speed_pid;
+		PIDController * angle_pid;
+		
+		Shooter(){
+			flywheel = new Victor(FLYWHEEL_PWM);
+			tipper = new Victor(TIPPER_PWM);
+			angle = new Encoder(ENCODER_SHOOTER_ANGLE_A_CHANNEL, ENCODER_SHOOTER_ANGLE_B_CHANNEL);
+			speed = new Encoder(ENCODER_SHOOTER_SPEED_A_CHANNEL, ENCODER_SHOOTER_SPEED_B_CHANNEL);
+			deployer = new Solenoid(DEPLOY_SHOOTER_SOLENOID_CHANNEL);
+			speed_pid = new PIDController(0.1f, 0.0f, 0.0f, speed, flywheel);
+			speed_pid->Disable();
+			angle_pid = new PIDController(0.1f, 0.0f, 0.0f, angle, tipper);
+			angle_pid->Disable();
+		}
+		
+		void deploy(){
+			deployer->Set(SHOOTER_DEPLOYED);
+		}
+		void undeploy(){
+			deployer->Set(!SHOOTER_DEPLOYED);
+		}
+		void set_speed(float new_speed){
+			speed_pid->SetSetpoint(new_speed);
+			speed_pid->Enable();
+		}
+		void set_angle(float new_angle){
+			angle_pid->SetSetpoint(new_angle);
+			angle_pid->Enable();
+		}
+	};
+	
+	
+	Shooter * shooter;
 	
 	//Here we get to the REAL code
 public:
@@ -94,24 +152,24 @@ public:
 	void RobotInit(){
 		//"Naming" refers to initializing (like giving a PWM port)
 		//Drive train motors are named
-		left_drive = new Victor(DRIVE_LEFT);
-		right_drive = new Victor(DRIVE_RIGHT);
+		left_drive = new Victor(DRIVE_LEFT_PWM);
+		right_drive = new Victor(DRIVE_RIGHT_PWM);
 		
-		//I have no clue what this does (probably states what left & right are)
-		drive = new RobotDrive(
+		drive = new PIDDrive(
 				left_drive,
-				right_drive
+				right_drive,
+				0.1f, 0.0f, 0.0f
 				);
 		
 		//Names lift victors
-		lift_top = new Victor(LIFT_TOP);
-		lift_bottom = new Victor(LIFT_BOTTOM);
 		
 		//Names the rollers
-		bump_up = new Victor(BUMP_UP_CHANNEL);
-		intake = new Victor(INTAKE_CHANNEL);
+		elevator_front = new Victor(ELEVATOR_FRONT_PWM);
+		elevator_back = new Victor(ELEVATOR_BACK_PWM);
+		feeder = new Victor(FEEDER_PWM);
+		pickup_roller = new Victor(PICK_UP_PWM);
 		
-		shooter_wheel = new Victor(FLYWHEEL_CHANNEL);
+		shooter = new Shooter();
 		throttle = 0.7f;
 		
 		//Set the roller/elevator motors to 0 just in case
@@ -121,14 +179,17 @@ public:
 		
 		//Names our fancy shifter
 		gear_shift = new Solenoid(GEAR_SHIFT_SOLENOID_CHANNEL);
+		deploy_shooter = new Solenoid(DEPLOY_SHOOTER_SOLENOID_CHANNEL);
+		deploy_feeder = new Solenoid(DEPLOY_FEEDER_SOLENOID_CHANNEL);
 		
-
+		lastGyro = 0.00;
+		dGyro = 0.00;
 		//Naes encoders
-		encoder1 = new Encoder(ENCODER_1_A_CHANNEL, ENCODER_1_B_CHANNEL);
-		encoder2 = new Encoder(ENCODER_2_A_CHANNEL, ENCODER_2_B_CHANNEL);
+//		encoder1 = new Encoder(ENCODER_1_A_CHANNEL, ENCODER_1_B_CHANNEL);
+//		encoder2 = new Encoder(ENCODER_2_A_CHANNEL, ENCODER_2_B_CHANNEL);
 
 		gyro = new Gyro(GYRO_CHANNEL);
-		
+		gyro->Reset();
 		//Names the gamepad
 		gamepad = new Gamepad(1);
 		
@@ -139,16 +200,18 @@ public:
 	//Stops driving in disabled
 	void DisabledInit(){
 		drive->ArcadeDrive(0.0f, 0.0f);
+		shooter->undeploy();
+		deploy_feeder->Set(!FEEDER_DEPLOYED);
 	}
 	
 	void AutonInit(){
-		
+		shooter->deploy();
 	}
 	
 	void TeleopInit(){
 		//Starts the encoders
-		encoder1->Start();
-		encoder2->Start();
+		//encoder1->Start();
+		//encoder2->Start();
 	}
 	
 	void DisabledPeriodic(){
@@ -183,9 +246,11 @@ public:
 		
 		//starts shooter when button is pressed:
 		if (gamepad->GetNumberedButton(FIRE_SHOOTER_BUTTON)){
-			shooter_wheel->Set(throttle);
-			lcd->PrintfLine(DriverStationLCD::kUser_Line2, "Throttle at: %d%%", (int) (throttle * 100));
-			
+			shooter->flywheel->Set(throttle);
+			lcd->PrintfLine(DriverStationLCD::kUser_Line2, "Engaged at: %d%%", (int) (throttle * 100));
+		} else {
+			shooter->flywheel->Set(0);
+			lcd->PrintfLine(DriverStationLCD::kUser_Line2, "Disengaged at: %d%%", (int) (throttle * 100));
 		}
 		
 		//The Fancy Roller Code:
@@ -197,26 +262,9 @@ public:
 		}
 		
 		//Set the victors to the values
-		bump_up->Set(rollerSpeed * BUMP_UP_DIRECTION);
-		intake->Set(rollerSpeed * INTAKE_DIRECTION);
-		
-
-		//Speeds/slows the elevator based on the D-pad
-		int pressed = 0; 
-		pressed = gamepad->GetDPad();
-		if (elevatorSpeed <= 0.99 && pressed == Gamepad::kUp)// || pressed == Gamepad::kUpLeft || pressed == Gamepad::kUpRight)
-		{
-			elevatorSpeed += 0.01;
-		}
-		if (elevatorSpeed >= 0.01 &&pressed  == Gamepad::kDown)// || pressed == Gamepad::kDownLeft || pressed == Gamepad::kDownRight)
-		{
-			elevatorSpeed -= 0.01;
-		}
-
-		
-		//Sets the elevator victors
-		lift_top->Set(elevatorSpeed*ELEVATOR_TOP_DIRECTION);
-		lift_bottom->Set(elevatorSpeed*ELEVATOR_BOTTOM_DIRECTION);		
+		elevator_front->Set(rollerSpeed * ELEVATOR_FRONT_DIRECTION);
+		elevator_back->Set(rollerSpeed * ELEVATOR_BACK_DIRECTION);
+		pickup_roller->Set(rollerSpeed * PICKUP_DIRECTION);
 		
 		//Shifts them geers:
 		if (gamepad->GetNumberedButton(SHIFT_LOW_BUTTON)){
@@ -237,29 +285,19 @@ public:
 		//Displays elevator speeds
 		lcd->PrintfLine(DriverStationLCD::kUser_Line3, "elevator at %f", elevatorSpeed);
 
-		//Displays encoder values
-		//uncomment if you want to see encoder values, we removed them to get more lines
-		/*
-		int encoder_value1 = encoder1->Get();
-		lcd->PrintfLine(DriverStationLCD::kUser_Line5, "encoder at %i", encoder_value1);
-		
-		int encoder_value2 = encoder2->Get();
-		lcd->PrintfLine(DriverStationLCD::kUser_Line6, "encoder at %i", encoder_value2);
-		*/
-		
+		 
 		//Displays gyro value
-		float gyro_angle = gyro->GetAngle();
-		lcd->PrintfLine(DriverStationLCD::kUser_Line5, "Gyro at %f", gyro_angle);
 		
+		float gyro_angle = gyro->GetAngle();
+		dGyro = lastGyro-gyro_angle;
+		lcd->PrintfLine(DriverStationLCD::kUser_Line5, "Gyro at %f", gyro_angle);
+		lcd->PrintfLine(DriverStationLCD::kUser_Line6, "DG %f",dGyro);
+		lastGyro = gyro_angle;		
 		//Updates Driver Station
 		lcd->UpdateLCD();		
 	}
 	
-	//Later this will be PID-ish
-	float CurveAcceleration(float input) {
-		//TODO: apparently we're going to do something here sometime
-		return input;
-	}
+
 };
 
 START_ROBOT_CLASS(UltimateAscensionRobot)

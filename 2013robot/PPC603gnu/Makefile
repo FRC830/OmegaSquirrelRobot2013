@@ -162,7 +162,15 @@ BuiltinDefaultCode_partialImage/$(MODE_DIR)/% : LIBPATH =
 BuiltinDefaultCode_partialImage/$(MODE_DIR)/% : LIBS = 
 BuiltinDefaultCode_partialImage/$(MODE_DIR)/% : OBJ_DIR := BuiltinDefaultCode_partialImage/$(MODE_DIR)
 
+BuiltinDefaultCode_partialImage/$(MODE_DIR)/Objects/2013robot/ControlledVariable.o : $(PRJ_ROOT_DIR)/ControlledVariable.cpp $(FORCE_FILE_BUILD)
+	$(TRACE_FLAG)if [ ! -d "`dirname "$@"`" ]; then mkdir -p "`dirname "$@"`"; fi;echo "building $@"; $(TOOL_PATH)ccppc $(DEBUGFLAGS_C++-Compiler) $(CC_ARCH_SPEC) -ansi -Wall  -MD -MP -mlongcall $(ADDED_C++FLAGS) $(IDE_INCLUDES) $(ADDED_INCLUDES) -DCPU=$(CPU) -DTOOL_FAMILY=$(TOOL_FAMILY) -DTOOL=$(TOOL) -D_WRS_KERNEL   $(DEFINES) -o "$@" -c "$<"
+
+
 BuiltinDefaultCode_partialImage/$(MODE_DIR)/Objects/2013robot/Gamepad.o : $(PRJ_ROOT_DIR)/Gamepad.cpp $(FORCE_FILE_BUILD)
+	$(TRACE_FLAG)if [ ! -d "`dirname "$@"`" ]; then mkdir -p "`dirname "$@"`"; fi;echo "building $@"; $(TOOL_PATH)ccppc $(DEBUGFLAGS_C++-Compiler) $(CC_ARCH_SPEC) -ansi -Wall  -MD -MP -mlongcall $(ADDED_C++FLAGS) $(IDE_INCLUDES) $(ADDED_INCLUDES) -DCPU=$(CPU) -DTOOL_FAMILY=$(TOOL_FAMILY) -DTOOL=$(TOOL) -D_WRS_KERNEL   $(DEFINES) -o "$@" -c "$<"
+
+
+BuiltinDefaultCode_partialImage/$(MODE_DIR)/Objects/2013robot/PIDDrive.o : $(PRJ_ROOT_DIR)/PIDDrive.cpp $(FORCE_FILE_BUILD)
 	$(TRACE_FLAG)if [ ! -d "`dirname "$@"`" ]; then mkdir -p "`dirname "$@"`"; fi;echo "building $@"; $(TOOL_PATH)ccppc $(DEBUGFLAGS_C++-Compiler) $(CC_ARCH_SPEC) -ansi -Wall  -MD -MP -mlongcall $(ADDED_C++FLAGS) $(IDE_INCLUDES) $(ADDED_INCLUDES) -DCPU=$(CPU) -DTOOL_FAMILY=$(TOOL_FAMILY) -DTOOL=$(TOOL) -D_WRS_KERNEL   $(DEFINES) -o "$@" -c "$<"
 
 
@@ -170,7 +178,9 @@ BuiltinDefaultCode_partialImage/$(MODE_DIR)/Objects/2013robot/UltimateAscensionR
 	$(TRACE_FLAG)if [ ! -d "`dirname "$@"`" ]; then mkdir -p "`dirname "$@"`"; fi;echo "building $@"; $(TOOL_PATH)ccppc $(DEBUGFLAGS_C++-Compiler) $(CC_ARCH_SPEC) -ansi -Wall  -MD -MP -mlongcall $(ADDED_C++FLAGS) $(IDE_INCLUDES) $(ADDED_INCLUDES) -DCPU=$(CPU) -DTOOL_FAMILY=$(TOOL_FAMILY) -DTOOL=$(TOOL) -D_WRS_KERNEL   $(DEFINES) -o "$@" -c "$<"
 
 
-OBJECTS_BuiltinDefaultCode_partialImage = BuiltinDefaultCode_partialImage/$(MODE_DIR)/Objects/2013robot/Gamepad.o \
+OBJECTS_BuiltinDefaultCode_partialImage = BuiltinDefaultCode_partialImage/$(MODE_DIR)/Objects/2013robot/ControlledVariable.o \
+	 BuiltinDefaultCode_partialImage/$(MODE_DIR)/Objects/2013robot/Gamepad.o \
+	 BuiltinDefaultCode_partialImage/$(MODE_DIR)/Objects/2013robot/PIDDrive.o \
 	 BuiltinDefaultCode_partialImage/$(MODE_DIR)/Objects/2013robot/UltimateAscensionRobot.o
 
 BuiltinDefaultCode_partialImage/$(MODE_DIR)/BuiltinDefaultCode_partialImage.o : $(OBJECTS_BuiltinDefaultCode_partialImage)
@@ -185,7 +195,8 @@ BuiltinDefaultCode_partialImage/$(MODE_DIR)/BuiltinDefaultCode_partialImage_clea
 
 force : 
 
-DEP_FILES := BuiltinDefaultCode_partialImage/$(MODE_DIR)/Objects/2013robot/Gamepad.d BuiltinDefaultCode_partialImage/$(MODE_DIR)/Objects/2013robot/UltimateAscensionRobot.d
+DEP_FILES := BuiltinDefaultCode_partialImage/$(MODE_DIR)/Objects/2013robot/ControlledVariable.d BuiltinDefaultCode_partialImage/$(MODE_DIR)/Objects/2013robot/Gamepad.d BuiltinDefaultCode_partialImage/$(MODE_DIR)/Objects/2013robot/PIDDrive.d \
+	 BuiltinDefaultCode_partialImage/$(MODE_DIR)/Objects/2013robot/UltimateAscensionRobot.d
 -include $(DEP_FILES)
 
 
