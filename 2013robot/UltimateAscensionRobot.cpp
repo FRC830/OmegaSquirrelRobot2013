@@ -45,15 +45,18 @@ class UltimateAscensionRobot : public IterativeRobot {
 	static const int PICKUP_DIRECTION = 1;
 	
 	//These buttons control pick-up roller speed: 
-	static const int ROLLER_SPEED_UP = 6;
-	static const int ROLLER_SPEED_DOWN = 8;
+	static const int RUN_ROLLERS_1 = 7;
+	static const int RUN_ROLLERS_2 = 8;
 
 	//Buttons used to shift into high and low gear:
-	static const int SHIFT_HIGH_BUTTON = 5;
-	static const int SHIFT_LOW_BUTTON = 7;
+	static const int SHIFT_HIGH_BUTTON_1 = 5;
+	static const int SHIFT_HIGH_BUTTON_2 = 6;
+	static const int SHIFT_LOW_BUTTON_1 = 7;
+	static const int SHIFT_LOW_BUTTON_2 = 8;
 	
 	//shooter control button(s):
-	static const int FIRE_SHOOTER_BUTTON = 2;
+	static const int FIRE_SHOOTER_BUTTON_1 = 5;
+	static const int FIRE_SHOOTER_BUTTON_2 = 6;
 	
 	//Solenoid channels:
 	static const int GEAR_SHIFT_SOLENOID_CHANNEL = 1;
@@ -84,7 +87,7 @@ class UltimateAscensionRobot : public IterativeRobot {
 	
 	bool arcade_drive;
 	bool pilot_driving;
-	static const float COPILOT_ROTATION = 0.1;
+	static const float SMALL_ADJUSTMENT_UNIT = 0.1;
 	PIDDrive * drive;
 	Gamepad * pilot;
 	Gamepad * copilot;
@@ -213,12 +216,12 @@ public:
 	
 	void DisabledPeriodic(){
 		drive->ArcadeDrive(0.0f, 0.0f);
-		if (pilot->GetNumberedButton(5)){
+		if (pilot->GetNumberedButton(5) || pilot->GetNumberedButton(6)){
 			arcade_drive = true;
 			lcd->PrintfLine(DriverStationLCD::kUser_Line1, "In arcade drive");
 			lcd->UpdateLCD();
 		}
-		if (pilot->GetNumberedButton(6)){
+		if (pilot->GetNumberedButton(7) || pilot->GetNumberedButton(8)){
 			arcade_drive = false;
 			lcd->PrintfLine(DriverStationLCD::kUser_Line1, "In tank drive");
 			lcd->UpdateLCD();
@@ -230,25 +233,42 @@ public:
 		drive->ArcadeDrive(0.5f, 0.0f);
 	}
 	
-	void TeleopPeriodic(){
+	void TeleopPeriodic(){	
+		if (pilot->GetNumberedButton(SHIFT_LOW_BUTTON_1) || pilot->GetNumberedButton(SHIFT_LOW_BUTTON_2)){
+			gear_shift->Set(LOW_GEAR);
+		} else if (pilot->GetNumberedButton(SHIFT_HIGH_BUTTON_1) || pilot->GetNumberedButton(SHIFT_HIGH_BUTTON_2)){
+			gear_shift->Set(HIGH_GEAR);
+		}
+		
+		if (gear_shift->Get() == HIGH_GEAR)
+			lcd->PrintfLine(DriverStationLCD::kUser_Line4, "in high gear");
+		//small adjustments are only allowed if we're in low gear
+		else if (gear_shift->Get() == LOW_GEAR) {
+			lcd->PrintfLine(DriverStationLCD::kUser_Line4, "in low gear");
+			if (pilot->GetDPad() == Gamepad::kRight){
+				drive->ArcadeDrive(0.0f, SMALL_ADJUSTMENT_UNIT);
+			}
+			if (pilot->GetDPad() == Gamepad::kLeft){
+				drive->ArcadeDrive(0.0f, -SMALL_ADJUSTMENT_UNIT);
+			}
+			if (pilot->GetDPad() == Gamepad::kUp){
+				drive->ArcadeDrive(SMALL_ADJUSTMENT_UNIT, 0.0f);
+			}
+			if (pilot->GetDPad() == Gamepad::kDown){
+				drive->ArcadeDrive(-SMALL_ADJUSTMENT_UNIT, 0.0f);
+			}
+		}
 		
 		if(arcade_drive){
-			float forward_speed = pilot->GetLeftY();
-			float rotation = pilot->GetRightX();
-			drive->ArcadeDrive(forward_speed, rotation);
-			pilot_driving = forward_speed != 0.0f || rotation != 0.0f;
+			drive->ArcadeDrive(pilot->GetLeftY(), pilot->GetRightX());
 			lcd->PrintfLine(DriverStationLCD::kUser_Line1, "In arcade drive");
 		} else {
-			float left_speed = pilot->GetLeftY();
-			float right_speed = pilot->GetRightY();
-			pilot_driving = left_speed != 0.0f || right_speed != 0.0f;
-			drive->TankDrive(left_speed, right_speed);
+			drive->TankDrive(pilot->GetLeftY(), pilot->GetRightY());
 			lcd->PrintfLine(DriverStationLCD::kUser_Line1, "In tank drive");
 		}
 		
-		
 		//starts shooter when button is pressed:
-		if (copilot->GetNumberedButton(FIRE_SHOOTER_BUTTON)){
+		if (copilot->GetNumberedButton(FIRE_SHOOTER_BUTTON_1) || copilot->GetNumberedButton(FIRE_SHOOTER_BUTTON_2)){
 			shooter->flywheel->Set(throttle);
 			lcd->PrintfLine(DriverStationLCD::kUser_Line2, "Engaged at: %d%%", (int) (throttle * 100));
 		} else {
@@ -262,17 +282,12 @@ public:
 		if (copilot->GetDPad() == Gamepad::kDown && throttle >= 0.5){
 			throttle -= 0.05;
 		}
-		if (copilot->GetDPad() == Gamepad::kRight && !pilot_driving){
-			drive->ArcadeDrive(0.0f, COPILOT_ROTATION);
-		}
-		if (copilot->GetDPad() == Gamepad::kLeft && !pilot_driving){
-			drive->ArcadeDrive(0.0f, -COPILOT_ROTATION);
-		}
+
 		//The Fancy Roller Code:
 		//Speeds & slows the rollers:
-		if (rollerSpeed <= 0.99 && copilot->GetNumberedButton(ROLLER_SPEED_UP)){
+		if (rollerSpeed <= 0.99 && copilot->GetNumberedButton(RUN_ROLLERS_1) || copilot->GetNumberedButton(RUN_ROLLERS_2)){
 			rollerSpeed += .01;
-		} else if (rollerSpeed >= .01 && copilot->GetNumberedButton(ROLLER_SPEED_DOWN)){
+		} else if (rollerSpeed >= .01){
 			rollerSpeed -= .01;
 		}
 		
@@ -281,19 +296,7 @@ public:
 		elevator_back->Set(rollerSpeed * ELEVATOR_BACK_DIRECTION);
 		pickup_roller->Set(rollerSpeed * PICKUP_DIRECTION);
 		
-		//Shifts them geers:
-		if (pilot->GetNumberedButton(SHIFT_LOW_BUTTON)){
-			gear_shift->Set(LOW_GEAR);
-		} else if (pilot->GetNumberedButton(SHIFT_HIGH_BUTTON)){
-			gear_shift->Set(HIGH_GEAR);
-		}
-		
-		//Displays gears
-		if (gear_shift->Get() == HIGH_GEAR)
-			lcd->PrintfLine(DriverStationLCD::kUser_Line4, "in high gear");
-		else if (gear_shift->Get() == LOW_GEAR)
-			lcd->PrintfLine(DriverStationLCD::kUser_Line4, "in low gear");
-		
+
 		//Displays elevator speeds
 		lcd->PrintfLine(DriverStationLCD::kUser_Line3, "elevator at %f", elevatorSpeed);
 	
