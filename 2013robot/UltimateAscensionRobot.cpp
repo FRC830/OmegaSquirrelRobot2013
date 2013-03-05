@@ -47,26 +47,31 @@ class UltimateAscensionRobot : public IterativeRobot {
 	static const int DEPLOY_FEEDER_SOLENOID_CHANNEL = 3;
 	
 	//Solenoid states:
-	static const bool HIGH_GEAR = false;
-	static const bool LOW_GEAR = true;
+	static const bool HIGH_GEAR = true;
+	static const bool LOW_GEAR = false;
 	
 	static const bool SHOOTER_DEPLOYED = true;
 	static const bool FEEDER_DEPLOYED = true;
 	
-	//pilot controls
-	//during disabled mode, pressing the upper shoulder buttons switches to arcade drive
-	//and the lower shoulder buttons switch to tank drive
-	//tank drive uses the left-y and right-y for left and right speed, respectively
-	//arcade drive uses the left-y and right-x for forward speed and direction, respectively
-	//in either mode, pressing up or down on the dpad will move the robot slightly forward or backwards
-	//and pressing left or right will rotate slightly in that direction w/o moving forward or back
+	/********************************* PILOT CONTROLS ******************************************* 
+	 *	During disabled mode, pressing the upper shoulder buttons switches to arcade drive,		*
+	 *	and the lower shoulder buttons switch to tank drive.									*
+	 *	Tank drive uses the left-y and right-y for left and right speed, respectively.			*
+	 *	Arcade drive uses the left-y and right-x for forward speed and direction, respectively.	*
+	 *	Pressing one of the upper shoulder buttons shifts to high gear, a lower one to low gear.*
+	 ********************************************************************************************/
+	
 	static const int SHIFT_HIGH_BUTTON_1 = 5;
 	static const int SHIFT_HIGH_BUTTON_2 = 6;
 	static const int SHIFT_LOW_BUTTON_1 = 7;
 	static const int SHIFT_LOW_BUTTON_2 = 8;
 	
-	//copilot controls
-	//pressing up or down on the dpad adjusts throttle speed
+	/********************************* COPILOT CONTROLS ***************************************** 
+	 *	Pressing up or down on the dpad raises or lowers throttle by 5% (default is 70%).		*
+	 *	Pressing an upper shoulder button spins the flywheel at the current throttle speed.		*
+	 *	Pressing a lower shoulder button slightly increases the roller speed (hold to spin).	*
+	 ********************************************************************************************/
+
 	static const int FIRE_SHOOTER_BUTTON_1 = 5;
 	static const int FIRE_SHOOTER_BUTTON_2 = 6;
 	static const int RUN_ROLLERS_1 = 7;
@@ -87,9 +92,8 @@ class UltimateAscensionRobot : public IterativeRobot {
 	Gyro * gyro;
 	
 	bool arcade_drive;
-	bool pilot_driving;
 	static const float SMALL_ADJUSTMENT_UNIT = 0.1;
-	PIDDrive * drive;
+	RobotDrive * drive;
 	Gamepad * pilot;
 	Gamepad * copilot;
 	DriverStationLCD * lcd;
@@ -117,19 +121,27 @@ class UltimateAscensionRobot : public IterativeRobot {
 		Solenoid * deployer;
 		PIDController * speed_pid;
 		PIDController * angle_pid;
+		float p, i, d;
 		
 		Shooter(){
+			p = 0.1f;
+			i = 0.0f;
+			d = 0.0f;
 			flywheel = new Victor(FLYWHEEL_PWM);
 			tipper = new Victor(TIPPER_PWM);
 			angle = new Encoder(ENCODER_SHOOTER_ANGLE_A_CHANNEL, ENCODER_SHOOTER_ANGLE_B_CHANNEL);
 			speed = new Encoder(ENCODER_SHOOTER_SPEED_A_CHANNEL, ENCODER_SHOOTER_SPEED_B_CHANNEL);
 			deployer = new Solenoid(DEPLOY_SHOOTER_SOLENOID_CHANNEL);
-			speed_pid = new PIDController(0.1f, 0.0f, 0.0f, speed, flywheel);
+			speed_pid = new PIDController(p, i, d, speed, flywheel);
 			speed_pid->Disable();
-			angle_pid = new PIDController(0.1f, 0.0f, 0.0f, angle, tipper);
+			angle_pid = new PIDController(p, i, d, angle, tipper);
 			angle_pid->Disable();
 		}
-		
+		void set_pid_values(float p, float i = 0.0f, float d = 0.0f){
+			this->p = p;
+			this->i = i;
+			this->d = d;
+		}
 		void deploy(){
 			deployer->Set(SHOOTER_DEPLOYED);
 		}
@@ -161,10 +173,9 @@ public:
 		left_drive = new Victor(DRIVE_LEFT_PWM);
 		right_drive = new Victor(DRIVE_RIGHT_PWM);
 		
-		drive = new PIDDrive(
+		drive = new RobotDrive(
 				left_drive,
-				right_drive,
-				0.1f, 0.0f, 0.0f
+				right_drive
 				);
 		arcade_drive = true;
 		//Names lift victors
@@ -178,8 +189,6 @@ public:
 		shooter = new Shooter();
 		throttle = 0.7f;
 		
-		pilot_driving = false;
-		
 		//Set the roller/elevator motors to 0 just in case
 		rollerSpeed = 0.0;
 		
@@ -190,8 +199,8 @@ public:
 		deploy_shooter = new Solenoid(DEPLOY_SHOOTER_SOLENOID_CHANNEL);
 		deploy_feeder = new Solenoid(DEPLOY_FEEDER_SOLENOID_CHANNEL);
 		
-		gyro = new Gyro(GYRO_CHANNEL);
-		gyro->Reset();
+		//gyro = new Gyro(GYRO_CHANNEL);
+		//gyro->Reset();
 		//Names the gamepad
 		pilot = new Gamepad(1);
 		copilot = new Gamepad(2);
@@ -236,34 +245,6 @@ public:
 	}
 	
 	void TeleopPeriodic(){
-		if (pilot->GetNumberedButton(SHIFT_LOW_BUTTON_1) || pilot->GetNumberedButton(SHIFT_LOW_BUTTON_2)){
-			gear_shift->Set(LOW_GEAR);
-		} else if (pilot->GetNumberedButton(SHIFT_HIGH_BUTTON_1) || pilot->GetNumberedButton(SHIFT_HIGH_BUTTON_2)){
-			gear_shift->Set(HIGH_GEAR);
-		}
-		
-		if (gear_shift->Get() == HIGH_GEAR)
-			lcd->PrintfLine(DriverStationLCD::kUser_Line4, "in high gear");
-		//Small adjustments are only allowed if we're in low gear
-		//Allows pilot to make small adjustments with the D-pad
-		else if (gear_shift->Get() == LOW_GEAR) {
-			lcd->PrintfLine(DriverStationLCD::kUser_Line4, "in low gear");
-			if (pilot->GetDPad() == Gamepad::kRight){
-				drive->ArcadeDrive(0.0f, SMALL_ADJUSTMENT_UNIT);
-			}
-			if (pilot->GetDPad() == Gamepad::kLeft){
-				drive->ArcadeDrive(0.0f, -SMALL_ADJUSTMENT_UNIT);
-			}
-			if (pilot->GetDPad() == Gamepad::kUp){
-				drive->ArcadeDrive(SMALL_ADJUSTMENT_UNIT, 0.0f);
-			}
-			if (pilot->GetDPad() == Gamepad::kDown){
-				drive->ArcadeDrive(-SMALL_ADJUSTMENT_UNIT, 0.0f);
-			}
-		}
-		
-		//This makes the inputs into proper arcade drive outputs if the robot is in arcade drive.
-		//Otherwise, it goes to tank drive.
 		if(arcade_drive){
 			drive->ArcadeDrive(pilot->GetLeftY(), pilot->GetRightX());
 			lcd->PrintfLine(DriverStationLCD::kUser_Line1, "In arcade drive");
@@ -272,6 +253,37 @@ public:
 			lcd->PrintfLine(DriverStationLCD::kUser_Line1, "In tank drive");
 		}
 		
+		if (pilot->GetNumberedButton(SHIFT_LOW_BUTTON_1) || 
+				pilot->GetNumberedButton(SHIFT_LOW_BUTTON_2)){
+			gear_shift->Set(LOW_GEAR);
+		} else if (pilot->GetNumberedButton(SHIFT_HIGH_BUTTON_1) || 
+				pilot->GetNumberedButton(SHIFT_HIGH_BUTTON_2)){
+			gear_shift->Set(HIGH_GEAR);
+		}
+		
+		if (gear_shift->Get() == HIGH_GEAR)
+			lcd->PrintfLine(DriverStationLCD::kUser_Line4, "in high gear");
+		//Small adjustments are only allowed if we're in low gear
+		else if (gear_shift->Get() == LOW_GEAR) {
+			lcd->PrintfLine(DriverStationLCD::kUser_Line4, "in low gear");
+			/* for some reason the small adjustment code breaks everything right now
+			Gamepad::DPadDirection dpad = pilot->GetDPad();
+			if (dpad == Gamepad::kRight){
+				drive->ArcadeDrive(0.0f, SMALL_ADJUSTMENT_UNIT);
+			}
+			if (dpad == Gamepad::kLeft){
+				drive->ArcadeDrive(0.0f, -SMALL_ADJUSTMENT_UNIT);
+			}
+			if (dpad == Gamepad::kUp){
+				drive->ArcadeDrive(SMALL_ADJUSTMENT_UNIT, 0.0f);
+			}
+			if (dpad  == Gamepad::kDown){
+				drive->ArcadeDrive(-SMALL_ADJUSTMENT_UNIT, 0.0f);
+			}
+			*/
+		}
+		
+
 		//Starts shooter when button is pressed:
 		if (copilot->GetNumberedButton(FIRE_SHOOTER_BUTTON_1) || copilot->GetNumberedButton(FIRE_SHOOTER_BUTTON_2)){
 			shooter->flywheel->Set(throttle);
