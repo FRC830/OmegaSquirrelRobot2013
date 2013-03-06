@@ -1,6 +1,7 @@
 #include "WPILib.h"
 #include "Gamepad.h"
 #include "PIDDrive.h"
+#include "Shooter.h"
 #include <cmath>
 
 class UltimateAscensionRobot : public IterativeRobot {
@@ -11,25 +12,17 @@ class UltimateAscensionRobot : public IterativeRobot {
 	static const int DRIVE_LEFT_PWM = 1;
 	
 	//Roller PWM channels:
-	static const int ELEVATOR_FRONT_PWM = 2;
+	static const int ELEVATOR_FRONT_PWM = 10;
 	static const int ELEVATOR_BACK_PWM = 3;
 	static const int FEEDER_PWM = 8;
 	static const int PICK_UP_PWM = 9;
 	static const int BUMP_UP_PWM = 7;
-	
-	//shooter PWM
-	static const int FLYWHEEL_PWM = 5;
-	static const int TIPPER_PWM = 6;
 	
 	//Encoder channels:
 	static const int ENCODER_DRIVE_RIGHT_A_CHANNEL = 1;
 	static const int ENCODER_DRIVE_RIGHT_B_CHANNEL = 2;
 	static const int ENCODER_DRIVE_LEFT_A_CHANNEL = 3;
 	static const int ENCODER_DRIVE_LEFT_B_CHANNEL = 4;
-	static const int ENCODER_SHOOTER_ANGLE_A_CHANNEL = 5;
-	static const int ENCODER_SHOOTER_ANGLE_B_CHANNEL = 6;
-	static const int ENCODER_SHOOTER_SPEED_A_CHANNEL = 7;
-	static const int ENCODER_SHOOTER_SPEED_B_CHANNEL = 8;
 	
 	//analog channel for gyro
 	//needs to be 1 or 2 or it WON'T WORK!
@@ -43,7 +36,6 @@ class UltimateAscensionRobot : public IterativeRobot {
 	
 	//Solenoid channels:
 	static const int GEAR_SHIFT_SOLENOID_CHANNEL = 1;
-	static const int DEPLOY_SHOOTER_SOLENOID_CHANNEL = 2;
 	static const int DEPLOY_FEEDER_SOLENOID_CHANNEL = 3;
 	
 	//Solenoid states:
@@ -109,57 +101,7 @@ class UltimateAscensionRobot : public IterativeRobot {
 	
 	float throttle;
 	
-	//class to hold all of the shooter stuff
-	class Shooter {
-		//constants:
-		static const bool SHOOTER_DEPLOYED = true;
-	public:
-		Victor * flywheel;
-		Victor * tipper;
-		Encoder * angle;
-		Encoder * speed;
-		Solenoid * deployer;
-		PIDController * speed_pid;
-		PIDController * angle_pid;
-		float p, i, d;
-		
-		Shooter(){
-			p = 0.1f;
-			i = 0.0f;
-			d = 0.0f;
-			flywheel = new Victor(FLYWHEEL_PWM);
-			tipper = new Victor(TIPPER_PWM);
-			angle = new Encoder(ENCODER_SHOOTER_ANGLE_A_CHANNEL, ENCODER_SHOOTER_ANGLE_B_CHANNEL);
-			speed = new Encoder(ENCODER_SHOOTER_SPEED_A_CHANNEL, ENCODER_SHOOTER_SPEED_B_CHANNEL);
-			deployer = new Solenoid(DEPLOY_SHOOTER_SOLENOID_CHANNEL);
-			speed_pid = new PIDController(p, i, d, speed, flywheel);
-			speed_pid->Disable();
-			angle_pid = new PIDController(p, i, d, angle, tipper);
-			angle_pid->Disable();
-		}
-		void set_pid_values(float p, float i = 0.0f, float d = 0.0f){
-			this->p = p;
-			this->i = i;
-			this->d = d;
-		}
-		void deploy(){
-			deployer->Set(SHOOTER_DEPLOYED);
-		}
-		void undeploy(){
-			deployer->Set(!SHOOTER_DEPLOYED);
-		}
-		void set_speed(float new_speed){
-			speed_pid->SetSetpoint(new_speed);
-			speed_pid->Enable();
-		}
-		void set_angle(float new_angle){
-			angle_pid->SetSetpoint(new_angle);
-			angle_pid->Enable();
-		}
-	};
-	
-	
-	Shooter * shooter;
+//	Shooter * shooter;
 	
 	//Here we get to the REAL code
 public:
@@ -178,6 +120,11 @@ public:
 				right_drive
 				);
 		arcade_drive = true;
+		
+		//Invert left drive motor, it runs backwards
+		drive->SetInvertedMotor(RobotDrive::kFrontLeftMotor, true);
+		drive->SetInvertedMotor(RobotDrive::kRearLeftMotor, true);
+		
 		//Names lift victors
 		
 		//Names the rollers
@@ -186,7 +133,7 @@ public:
 		feeder = new Victor(FEEDER_PWM);
 		pickup_roller = new Victor(PICK_UP_PWM);
 		
-		shooter = new Shooter();
+		//shooter = new Shooter();
 		throttle = 0.7f;
 		
 		//Set the roller/elevator motors to 0 just in case
@@ -196,7 +143,6 @@ public:
 		
 		//Names our fancy shifter
 		gear_shift = new Solenoid(GEAR_SHIFT_SOLENOID_CHANNEL);
-		deploy_shooter = new Solenoid(DEPLOY_SHOOTER_SOLENOID_CHANNEL);
 		deploy_feeder = new Solenoid(DEPLOY_FEEDER_SOLENOID_CHANNEL);
 		
 		//gyro = new Gyro(GYRO_CHANNEL);
@@ -212,12 +158,12 @@ public:
 	//Stops driving in disabled
 	void DisabledInit(){
 		drive->ArcadeDrive(0.0f, 0.0f);
-		shooter->undeploy();
+//		shooter->undeploy();
 		deploy_feeder->Set(!FEEDER_DEPLOYED);
 	}
 	
 	void AutonInit(){
-		shooter->deploy();
+//		shooter->deploy();
 	}
 	
 	void TeleopInit(){
@@ -263,6 +209,7 @@ public:
 		
 		if (gear_shift->Get() == HIGH_GEAR)
 			lcd->PrintfLine(DriverStationLCD::kUser_Line4, "in high gear");
+		
 		//Small adjustments are only allowed if we're in low gear
 		else if (gear_shift->Get() == LOW_GEAR) {
 			lcd->PrintfLine(DriverStationLCD::kUser_Line4, "in low gear");
@@ -286,10 +233,10 @@ public:
 
 		//Starts shooter when button is pressed:
 		if (copilot->GetNumberedButton(FIRE_SHOOTER_BUTTON_1) || copilot->GetNumberedButton(FIRE_SHOOTER_BUTTON_2)){
-			shooter->flywheel->Set(throttle);
+//			shooter->flywheel->Set(throttle);
 			lcd->PrintfLine(DriverStationLCD::kUser_Line2, "Engaged at: %d%%", (int) (throttle * 100));
 		} else {
-			shooter->flywheel->Set(0);
+//			shooter->flywheel->Set(0);
 			lcd->PrintfLine(DriverStationLCD::kUser_Line2, "Disengaged at: %d%%", (int) (throttle * 100));
 		}
 
