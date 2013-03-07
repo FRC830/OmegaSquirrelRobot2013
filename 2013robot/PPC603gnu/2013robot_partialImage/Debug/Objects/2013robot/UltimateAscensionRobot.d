@@ -381,6 +381,7 @@
   C:/WindRiver/vxworks-6.3/target/h/WPILib/Joystick.h \
   C:///FRC830-2013/2013robot/PIDDrive.h \
   C:///FRC830-2013/2013robot/Shooter.h \
+  C:///FRC830-2013/2013robot/LineBreakEncoder.h \
   c:/windriver/gnu/3.4.4-vxworks-6.3/x86-win32/lib/gcc/../../../x86-win32/include/c++/3.4.4/cmath \
   C:/WindRiver/vxworks-6.3/target/h/math.h
 
@@ -1145,6 +1146,8 @@ C:/WindRiver/vxworks-6.3/target/h/WPILib/Joystick.h:
 C:///FRC830-2013/2013robot/PIDDrive.h:
 
 C:///FRC830-2013/2013robot/Shooter.h:
+
+C:///FRC830-2013/2013robot/LineBreakEncoder.h:
 
 c:/windriver/gnu/3.4.4-vxworks-6.3/x86-win32/lib/gcc/../../../x86-win32/include/c++/3.4.4/cmath:
 

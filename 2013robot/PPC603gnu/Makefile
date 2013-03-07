@@ -170,6 +170,10 @@ endif
 	$(TRACE_FLAG)if [ ! -d "`dirname "$@"`" ]; then mkdir -p "`dirname "$@"`"; fi;echo "building $@"; $(TOOL_PATH)ccppc $(DEBUGFLAGS_C++-Compiler) $(CC_ARCH_SPEC) -ansi -Wall  -MD -MP -mlongcall $(ADDED_C++FLAGS) $(IDE_INCLUDES) $(ADDED_INCLUDES) -DCPU=$(CPU) -DTOOL_FAMILY=$(TOOL_FAMILY) -DTOOL=$(TOOL) -D_WRS_KERNEL   $(DEFINES) -o "$@" -c "$<"
 
 
+2013robot_partialImage/$(MODE_DIR)/Objects/2013robot/LineBreakEncoder.o : $(PRJ_ROOT_DIR)/LineBreakEncoder.cpp $(FORCE_FILE_BUILD)
+	$(TRACE_FLAG)if [ ! -d "`dirname "$@"`" ]; then mkdir -p "`dirname "$@"`"; fi;echo "building $@"; $(TOOL_PATH)ccppc $(DEBUGFLAGS_C++-Compiler) $(CC_ARCH_SPEC) -ansi -Wall  -MD -MP -mlongcall $(ADDED_C++FLAGS) $(IDE_INCLUDES) $(ADDED_INCLUDES) -DCPU=$(CPU) -DTOOL_FAMILY=$(TOOL_FAMILY) -DTOOL=$(TOOL) -D_WRS_KERNEL   $(DEFINES) -o "$@" -c "$<"
+
+
 2013robot_partialImage/$(MODE_DIR)/Objects/2013robot/PIDDrive.o : $(PRJ_ROOT_DIR)/PIDDrive.cpp $(FORCE_FILE_BUILD)
 	$(TRACE_FLAG)if [ ! -d "`dirname "$@"`" ]; then mkdir -p "`dirname "$@"`"; fi;echo "building $@"; $(TOOL_PATH)ccppc $(DEBUGFLAGS_C++-Compiler) $(CC_ARCH_SPEC) -ansi -Wall  -MD -MP -mlongcall $(ADDED_C++FLAGS) $(IDE_INCLUDES) $(ADDED_INCLUDES) -DCPU=$(CPU) -DTOOL_FAMILY=$(TOOL_FAMILY) -DTOOL=$(TOOL) -D_WRS_KERNEL   $(DEFINES) -o "$@" -c "$<"
 
@@ -184,6 +188,7 @@ endif
 
 OBJECTS_2013robot_partialImage = 2013robot_partialImage/$(MODE_DIR)/Objects/2013robot/ControlledVariable.o \
 	 2013robot_partialImage/$(MODE_DIR)/Objects/2013robot/Gamepad.o \
+	 2013robot_partialImage/$(MODE_DIR)/Objects/2013robot/LineBreakEncoder.o \
 	 2013robot_partialImage/$(MODE_DIR)/Objects/2013robot/PIDDrive.o \
 	 2013robot_partialImage/$(MODE_DIR)/Objects/2013robot/Shooter.o \
 	 2013robot_partialImage/$(MODE_DIR)/Objects/2013robot/UltimateAscensionRobot.o
@@ -200,8 +205,8 @@ _clean :: 2013robot_partialImage/$(MODE_DIR)/2013robot_partialImage_clean
 
 force : 
 
-DEP_FILES := 2013robot_partialImage/$(MODE_DIR)/Objects/2013robot/ControlledVariable.d 2013robot_partialImage/$(MODE_DIR)/Objects/2013robot/Gamepad.d 2013robot_partialImage/$(MODE_DIR)/Objects/2013robot/PIDDrive.d \
-	 2013robot_partialImage/$(MODE_DIR)/Objects/2013robot/Shooter.d 2013robot_partialImage/$(MODE_DIR)/Objects/2013robot/UltimateAscensionRobot.d
+DEP_FILES := 2013robot_partialImage/$(MODE_DIR)/Objects/2013robot/ControlledVariable.d 2013robot_partialImage/$(MODE_DIR)/Objects/2013robot/Gamepad.d 2013robot_partialImage/$(MODE_DIR)/Objects/2013robot/LineBreakEncoder.d \
+	 2013robot_partialImage/$(MODE_DIR)/Objects/2013robot/PIDDrive.d 2013robot_partialImage/$(MODE_DIR)/Objects/2013robot/Shooter.d 2013robot_partialImage/$(MODE_DIR)/Objects/2013robot/UltimateAscensionRobot.d
 -include $(DEP_FILES)
 
 

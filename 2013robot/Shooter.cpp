@@ -1,4 +1,6 @@
+#include "WPILib.h"
 #include "Shooter.h"
+#include "LineBreakEncoder.h"
 
 Shooter::Shooter(){
 	p = 0.1f;
@@ -6,8 +8,10 @@ Shooter::Shooter(){
 	d = 0.0f;
 	flywheel = new Victor(FLYWHEEL_PWM);
 	tipper = new Victor(TIPPER_PWM);
+	disc_deployer = new Victor(DISC_DEPLOYER_PWM);
 	angle = new Encoder(ENCODER_SHOOTER_ANGLE_A_CHANNEL, ENCODER_SHOOTER_ANGLE_B_CHANNEL);
-	speed = new Encoder(ENCODER_SHOOTER_SPEED_A_CHANNEL, ENCODER_SHOOTER_SPEED_B_CHANNEL);
+	speed = new LineBreakEncoder();
+	speed->reset();
 	deployer = new Solenoid(DEPLOY_SHOOTER_SOLENOID_CHANNEL);
 	speed_pid = new PIDController(p, i, d, speed, flywheel);
 	speed_pid->Disable();
@@ -28,9 +32,27 @@ void Shooter::deploy(){
 void Shooter::undeploy(){
 	deployer->Set(!SHOOTER_DEPLOYED);
 }
-
+//TODO: this is prolly also gonna wanna move the elevator
+//returns whether or not we actually fired
+bool Shooter::fire(){
+	//don't let us shoot if the flywheel isn't spinning or if we're not up to speed
+	if (flywheel->Get() < 0.1 || 
+			(speed_pid->IsEnabled() && speed_pid->GetError() > 0.1)){
+		return false;
+	}
+	//move the deployer out until it hits the first switch...
+	while(!max->Get()){
+		disc_deployer->Set(0.3f);
+	}
+	//then move it back again until it hits the second one
+	while(!min->Get()){
+		disc_deployer->Set(-0.3f);
+	}
+	return true;
+}
 void Shooter::set_speed(float new_speed){
 	speed_pid->SetSetpoint(new_speed);
+	speed->reset();
 	speed_pid->Enable();
 }
 
@@ -39,3 +61,7 @@ void Shooter::set_angle(float new_angle){
 	angle_pid->Enable();
 }
 
+//MUST be called every cycle to update encoder
+void Shooter::update(){
+	speed->update();
+}

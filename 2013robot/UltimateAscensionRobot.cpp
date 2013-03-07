@@ -61,11 +61,13 @@ class UltimateAscensionRobot : public IterativeRobot {
 	/********************************* COPILOT CONTROLS ***************************************** 
 	 *	Pressing up or down on the dpad raises or lowers throttle by 5% (default is 70%).		*
 	 *	Pressing an upper shoulder button spins the flywheel at the current throttle speed.		*
+	 *	Pressing button 3 (the B button) fires a disc out of the shooter if it's up to speed.	*
 	 *	Pressing a lower shoulder button slightly increases the roller speed (hold to spin).	*
 	 ********************************************************************************************/
 
-	static const int FIRE_SHOOTER_BUTTON_1 = 5;
-	static const int FIRE_SHOOTER_BUTTON_2 = 6;
+	static const int FIRE_SHOOTER_BUTTON = 3;
+	static const int SPIN_SHOOTER_BUTTON_1 = 5;
+	static const int SPIN_SHOOTER_BUTTON_2 = 6;
 	static const int RUN_ROLLERS_1 = 7;
 	static const int RUN_ROLLERS_2 = 8;
 	
@@ -101,7 +103,7 @@ class UltimateAscensionRobot : public IterativeRobot {
 	
 	float throttle;
 	
-//	Shooter * shooter;
+	Shooter * shooter;
 	
 	//Here we get to the REAL code
 public:
@@ -133,7 +135,7 @@ public:
 		feeder = new Victor(FEEDER_PWM);
 		pickup_roller = new Victor(PICK_UP_PWM);
 		
-		//shooter = new Shooter();
+		shooter = new Shooter();
 		throttle = 0.7f;
 		
 		//Set the roller/elevator motors to 0 just in case
@@ -232,14 +234,22 @@ public:
 		
 
 		//Starts shooter when button is pressed:
-		if (copilot->GetNumberedButton(FIRE_SHOOTER_BUTTON_1) || copilot->GetNumberedButton(FIRE_SHOOTER_BUTTON_2)){
-//			shooter->flywheel->Set(throttle);
+		if (copilot->GetNumberedButton(SPIN_SHOOTER_BUTTON_1) || copilot->GetNumberedButton(SPIN_SHOOTER_BUTTON_2)){
+			shooter->flywheel->Set(throttle);
 			lcd->PrintfLine(DriverStationLCD::kUser_Line2, "Engaged at: %d%%", (int) (throttle * 100));
 		} else {
-//			shooter->flywheel->Set(0);
+			shooter->flywheel->Set(0);
 			lcd->PrintfLine(DriverStationLCD::kUser_Line2, "Disengaged at: %d%%", (int) (throttle * 100));
 		}
 
+		if (copilot->GetNumberedButton(FIRE_SHOOTER_BUTTON)){
+			//shooter->fire() returns false if the shooter wasn't ready to fire
+			if (shooter->fire()){
+				lcd->PrintfLine(DriverStationLCD::kUser_Line5, "fired successfully");
+			} else {
+				lcd->PrintfLine(DriverStationLCD::kUser_Line5, "shooter not ready to fire");
+			}
+		}
 		//Gives the copilot control of the shooter throttle
 		if (copilot->GetDPad() == Gamepad::kUp && throttle <= 0.95){
 			throttle += 0.05;
@@ -265,6 +275,7 @@ public:
 		//Displays elevator speeds
 		lcd->PrintfLine(DriverStationLCD::kUser_Line3, "elevator at %f", elevatorSpeed);
 	
+		shooter->update();
 		//Updates Driver Station
 		lcd->UpdateLCD();		
 	}

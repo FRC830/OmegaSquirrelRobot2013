@@ -1,6 +1,5 @@
 2013robot_partialImage/Debug/Objects/2013robot/Shooter.o:  \
  C:///FRC830-2013/2013robot/Shooter.cpp \
-  C:///FRC830-2013/2013robot/Shooter.h \
   C:/WindRiver/vxworks-6.3/target/h/WPILib/WPILib.h \
   C:/WindRiver/vxworks-6.3/target/h/string.h \
   C:/WindRiver/vxworks-6.3/target/h/types/vxANSI.h \
@@ -377,9 +376,9 @@
   C:/WindRiver/vxworks-6.3/target/h/WPILib/Vision/Threshold.h \
   C:/WindRiver/vxworks-6.3/target/h/WPILib/Vision/HSLImage.h \
   C:/WindRiver/vxworks-6.3/target/h/WPILib/Vision/ColorImage.h \
-  C:/WindRiver/vxworks-6.3/target/h/WPILib/WPIErrors.h
-
-C:///FRC830-2013/2013robot/Shooter.h:
+  C:/WindRiver/vxworks-6.3/target/h/WPILib/WPIErrors.h \
+  C:///FRC830-2013/2013robot/Shooter.h \
+  C:///FRC830-2013/2013robot/LineBreakEncoder.h
 
 C:/WindRiver/vxworks-6.3/target/h/WPILib/WPILib.h:
 
@@ -1134,3 +1133,7 @@ C:/WindRiver/vxworks-6.3/target/h/WPILib/Vision/HSLImage.h:
 C:/WindRiver/vxworks-6.3/target/h/WPILib/Vision/ColorImage.h:
 
 C:/WindRiver/vxworks-6.3/target/h/WPILib/WPIErrors.h:
+
+C:///FRC830-2013/2013robot/Shooter.h:
+
+C:///FRC830-2013/2013robot/LineBreakEncoder.h:
