@@ -11,9 +11,8 @@ class UltimateAscensionRobot : public IterativeRobot {
 	static const int DRIVE_LEFT_PWM = 1;
 	
 	//Roller PWM channels:
-	static const int ELEVATOR_FRONT_PWM = 10;
+	static const int ELEVATOR_FRONT_PWM = 2;
 	static const int ELEVATOR_BACK_PWM = 5;
-	static const int FEEDER_PWM = 8;
 	static const int PICK_UP_PWM = 9;
 	static const int BUMP_UP_PWM = 7;
 	
@@ -104,9 +103,8 @@ class UltimateAscensionRobot : public IterativeRobot {
 	Victor * elevator_front;
 	Victor * elevator_back;
 	Victor * pickup_roller;
-	Victor * feeder;
 
-	AxisCamera * camera;
+	//AxisCamera * camera;
 	
 	float throttle;
 	//victor value for auton mode
@@ -144,7 +142,6 @@ public:
 		//Names the rollers
 		elevator_front = new Victor(ELEVATOR_FRONT_PWM);
 		elevator_back = new Victor(ELEVATOR_BACK_PWM);
-		feeder = new Victor(FEEDER_PWM);
 		pickup_roller = new Victor(PICK_UP_PWM);
 		
 		shooter = new Shooter();
@@ -171,7 +168,7 @@ public:
 		timer = new Timer();
 		
 		//our variable is a pointer and GetInstance() returns an object, so we take the address
-		camera = &(AxisCamera::GetInstance());
+		//camera = &(AxisCamera::GetInstance());
 		
 		//Names the Driver Station
 		lcd = DriverStationLCD::GetInstance();
@@ -180,13 +177,15 @@ public:
 	//Stops driving in disabled
 	void DisabledInit(){
 		drive->ArcadeDrive(0.0f, 0.0f);
-		
+		gear_shift->Set(HIGH_GEAR);
+		lcd->PrintfLine(DriverStationLCD::kUser_Line4, "in high gear");
 		shooter->undeploy();
 		deploy_feeder->Set(!FEEDER_DEPLOYED);
 	}
 	
 	void AutonInit(){
 		shooter->deploy();
+		gear_shift->Set(LOW_GEAR);
 		//reset linebreak encoder
 		shooter->speed->reset();
 		fired_in_auton = false;
@@ -227,6 +226,7 @@ public:
 	}
 	
 	void TeleopPeriodic(){
+		
 		shooter->deploy();
 		if(arcade_drive){
 			drive->ArcadeDrive(pilot->GetLeftY(), pilot->GetRightX());
@@ -250,21 +250,6 @@ public:
 		//Small adjustments are only allowed if we're in low gear
 		else if (gear_shift->Get() == LOW_GEAR) {
 			lcd->PrintfLine(DriverStationLCD::kUser_Line4, "in low gear");
-			/* for some reason the small adjustment code breaks everything right now
-			Gamepad::DPadDirection dpad = pilot->GetDPad();
-			if (dpad == Gamepad::kRight){
-				drive->ArcadeDrive(0.0f, SMALL_ADJUSTMENT_UNIT);
-			}
-			if (dpad == Gamepad::kLeft){
-				drive->ArcadeDrive(0.0f, -SMALL_ADJUSTMENT_UNIT);
-			}
-			if (dpad == Gamepad::kUp){
-				drive->ArcadeDrive(SMALL_ADJUSTMENT_UNIT, 0.0f);
-			}
-			if (dpad  == Gamepad::kDown){
-				drive->ArcadeDrive(-SMALL_ADJUSTMENT_UNIT, 0.0f);
-			}
-			*/
 		}
 		
 
@@ -277,7 +262,7 @@ public:
 			shooter->flywheel->Set(0.0f);
 			lcd->PrintfLine(DriverStationLCD::kUser_Line2, "Disengaged at: %d%%", (int) (throttle * 100));
 		}
-
+		
 		if (copilot->GetNumberedButtonPressed(FIRE_SHOOTER_BUTTON)){
 			if (shooter->ready_to_fire()){
 				lcd->PrintfLine(DriverStationLCD::kUser_Line5, "shooter ready to fire");
@@ -287,13 +272,16 @@ public:
 			}
 		}
 		//Gives the copilot control of the shooter throttle
-		if (copilot->GetDPad() == Gamepad::kUp && throttle <= 0.95){
+		
+		if (copilot->GetNumberedButtonPressed(4) && throttle <= 0.95){
 			throttle += 0.05;
 		}
-		if (copilot->GetDPad() == Gamepad::kDown && throttle >= 0.5){
+		if (copilot->GetNumberedButtonPressed(2) && throttle >= 0.5){
 			throttle -= 0.05;
 		}
-
+		shooter->disc_deployer->Set(copilot->GetRightX() / 4);
+		
+		
 		//The Fancy Roller Code:
 		//Speeds & slows the rollers:
 		if (rollerSpeed <= 0.99 && copilot->GetNumberedButton(RUN_ROLLERS_1) || copilot->GetNumberedButton(RUN_ROLLERS_2)){
@@ -313,18 +301,21 @@ public:
 			compressor->Set(true);
 		}
 		
-		
+		if (pilot->GetNumberedButton(9)){
+			shooter->max->Get();
+		}
 		//Displays elevator speeds
-		lcd->PrintfLine(DriverStationLCD::kUser_Line3, "elevator at %f", elevatorSpeed);
+		//lcd->PrintfLine(DriverStationLCD::kUser_Line3, "elevator at %f", elevatorSpeed);
+		//lcd->PrintfLine(DriverStationLCD::kUser_Line3,"max: %d min: %d", shooter->max->Get(), shooter->min->Get());
 		lcd->PrintfLine(DriverStationLCD::kUser_Line5, "encoder says: %f", shooter->speed->PIDGet());
 		
 		//don't know whether this is necessary to display the image on the dashboard, but it probably won't hurt
-		camera->GetImage();
+		//camera->GetImage();
 		
 		//Updates Driver Station
 		lcd->UpdateLCD();		
 	}
-	
+	 
 };
 
 START_ROBOT_CLASS(UltimateAscensionRobot)

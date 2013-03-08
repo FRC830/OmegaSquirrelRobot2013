@@ -6,23 +6,23 @@ class Shooter {
 	//shooter PWM
 	static const int FLYWHEEL_PWM = 3;
 	static const int TIPPER_PWM = 6;
-	static const int DISC_DEPLOYER_PWM = 12; //TODO: currently unknown
+	static const int DISC_DEPLOYER_PWM = 8;
 	//encoder channels
 	static const int ENCODER_SHOOTER_ANGLE_A_CHANNEL = 5;
 	static const int ENCODER_SHOOTER_ANGLE_B_CHANNEL = 6;
 	static const int ENCODER_SHOOTER_SPEED_A_CHANNEL = 7;
 	static const int ENCODER_SHOOTER_SPEED_B_CHANNEL = 8;
 	//limit switch channels
-	static const int DISC_DEPLOYER_MAX_SWITCH = 1; //TODO: not yet determined
-	static const int DISC_DEPLOYER_MIN_SWITCH = 2; //TODO: not yet determined
-	//solenoid
-	static const int DEPLOY_SHOOTER_SOLENOID_CHANNEL = 2;
+	static const int DISC_DEPLOYER_MAX_SWITCH = 3; 
+	static const int DISC_DEPLOYER_MIN_SWITCH = 2;
+	static const int DEPLOY_SHOOTER_SOLENOID_CHANNEL_1 = 2;
+	static const int DEPLOY_SHOOTER_SOLENOID_CHANNEL_2 = 4;//TODO
 	//solenoid state where shooter is deployed
-	static const bool SHOOTER_DEPLOYED = true;
-	
+	static const DoubleSolenoid::Value SHOOTER_DEPLOYED = DoubleSolenoid::kForward;
+	static const DoubleSolenoid::Value SHOOTER_UNDEPLOYED = DoubleSolenoid::kReverse;
 	bool firing;
-public:
 	
+public:
 	Victor * flywheel;
 	Victor * tipper;
 	Victor * disc_deployer;
@@ -30,7 +30,7 @@ public:
 	DigitalInput * min;
 	Encoder * angle;
 	LineBreakEncoder * speed;
-	Solenoid * deployer;
+	DoubleSolenoid * deployer;
 	PIDController * speed_pid;
 	PIDController * angle_pid;
 	float p, i, d;

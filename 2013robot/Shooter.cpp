@@ -13,7 +13,7 @@ Shooter::Shooter(){
 	angle = new Encoder(ENCODER_SHOOTER_ANGLE_A_CHANNEL, ENCODER_SHOOTER_ANGLE_B_CHANNEL);
 	speed = new LineBreakEncoder();
 	speed->reset();
-	deployer = new Solenoid(DEPLOY_SHOOTER_SOLENOID_CHANNEL);
+	deployer = new DoubleSolenoid(DEPLOY_SHOOTER_SOLENOID_CHANNEL_1, DEPLOY_SHOOTER_SOLENOID_CHANNEL_2);
 	speed_pid = new PIDController(p, i, d, speed, flywheel);
 	speed_pid->Disable();
 	angle_pid = new PIDController(p, i, d, angle, tipper);
@@ -31,7 +31,7 @@ void Shooter::deploy(){
 }
 
 void Shooter::undeploy(){
-	deployer->Set(!SHOOTER_DEPLOYED);
+	deployer->Set(SHOOTER_UNDEPLOYED);
 }
 
 
