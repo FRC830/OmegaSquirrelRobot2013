@@ -1,29 +1,25 @@
-#include "WPILib.h"
+ #include "WPILib.h"
 #include "LineBreakEncoder.h"
 
 LineBreakEncoder::LineBreakEncoder(int tpr){
-	linebreak = new DigitalInput(LINE_BREAK_DIO_CHANNEL);
+	counter = new Counter(LINE_BREAK_DIO_CHANNEL);
 	timer = new Timer();
-	ticks_passed = 0;
+	counter->Start();
+	timer->Start();
 }
 
 double LineBreakEncoder::PIDGet(){
 	//ticks_passed / ticks_per_rev = # revolutions
 	//# revolutions / time elapsed in seconds = revs/sec
-	double result = (ticks_passed / ticks_per_rev) / timer->Get();
+	double result = (counter->Get() / ticks_per_rev) / timer->Get();
 	return result;
 }
 
-//you HAVE to call this every cRIO cycle
-void LineBreakEncoder::update(){
-	if (!linebreak->Get()){
-		ticks_passed++;
-	}
-}
 
 //you HAVE to call this every time you change target speeds
 void LineBreakEncoder::reset(){
-	ticks_passed = 0;
+	counter->Reset();
+	counter->Start();
 	timer->Reset();
 	timer->Start();
 }

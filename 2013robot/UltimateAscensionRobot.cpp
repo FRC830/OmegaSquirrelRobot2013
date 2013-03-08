@@ -5,7 +5,6 @@
 #include <cmath>
 
 class UltimateAscensionRobot : public IterativeRobot {
-
 	
 	//Drive train PWM channels:
 	static const int DRIVE_RIGHT_PWM = 10;
@@ -13,7 +12,7 @@ class UltimateAscensionRobot : public IterativeRobot {
 	
 	//Roller PWM channels:
 	static const int ELEVATOR_FRONT_PWM = 10;
-	static const int ELEVATOR_BACK_PWM = 3;
+	static const int ELEVATOR_BACK_PWM = 5;
 	static const int FEEDER_PWM = 8;
 	static const int PICK_UP_PWM = 9;
 	static const int BUMP_UP_PWM = 7;
@@ -33,6 +32,10 @@ class UltimateAscensionRobot : public IterativeRobot {
 	static const int ELEVATOR_BACK_DIRECTION = 1;
 	static const int ELEVATOR_TOP_DIRECTION = 1;
 	static const int PICKUP_DIRECTION = 1;
+	
+	//spike to turn on compressor
+	static const int COMPRESSOR_DIO_CHANNEL = 14;
+	static const int PRESSURE_SENSOR_DIO_CHANNEL = 13;
 	
 	//Solenoid channels:
 	static const int GEAR_SHIFT_SOLENOID_CHANNEL = 1;
@@ -75,6 +78,9 @@ class UltimateAscensionRobot : public IterativeRobot {
 	float rollerSpeed;
 	float elevatorSpeed;
 
+	DigitalOutput * compressor;
+	DigitalInput * pressure_sensor;
+	
 	//These are creating objects for motors & such
 	Solenoid * gear_shift;
 	Solenoid * deploy_shooter;
@@ -100,8 +106,16 @@ class UltimateAscensionRobot : public IterativeRobot {
 	Victor * pickup_roller;
 	Victor * feeder;
 
+	AxisCamera * camera;
 	
 	float throttle;
+	//victor value for auton mode
+	static const float AUTON_SHOOTER_THROTTLE = 0.7f; //TODO: determine this
+	//shooter speed in rev/s in auton if we get PID working
+	static const int AUTON_SHOOTER_SPEED = 0;//TODO: determine this
+	//whether we've fired yet in auton
+	bool fired_in_auton;
+	Timer * timer;
 	
 	Shooter * shooter;
 	
@@ -127,8 +141,6 @@ public:
 		drive->SetInvertedMotor(RobotDrive::kFrontLeftMotor, true);
 		drive->SetInvertedMotor(RobotDrive::kRearLeftMotor, true);
 		
-		//Names lift victors
-		
 		//Names the rollers
 		elevator_front = new Victor(ELEVATOR_FRONT_PWM);
 		elevator_back = new Victor(ELEVATOR_BACK_PWM);
@@ -143,6 +155,9 @@ public:
 		
 		elevatorSpeed = 0.0;
 		
+		compressor = new DigitalOutput(COMPRESSOR_DIO_CHANNEL);
+		pressure_sensor = new DigitalInput(PRESSURE_SENSOR_DIO_CHANNEL);
+		
 		//Names our fancy shifter
 		gear_shift = new Solenoid(GEAR_SHIFT_SOLENOID_CHANNEL);
 		deploy_feeder = new Solenoid(DEPLOY_FEEDER_SOLENOID_CHANNEL);
@@ -153,6 +168,11 @@ public:
 		pilot = new Gamepad(1);
 		copilot = new Gamepad(2);
 		
+		timer = new Timer();
+		
+		//our variable is a pointer and GetInstance() returns an object, so we take the address
+		camera = &(AxisCamera::GetInstance());
+		
 		//Names the Driver Station
 		lcd = DriverStationLCD::GetInstance();
 	}
@@ -160,19 +180,29 @@ public:
 	//Stops driving in disabled
 	void DisabledInit(){
 		drive->ArcadeDrive(0.0f, 0.0f);
-//		shooter->undeploy();
+		
+		shooter->undeploy();
 		deploy_feeder->Set(!FEEDER_DEPLOYED);
 	}
 	
 	void AutonInit(){
-//		shooter->deploy();
+		shooter->deploy();
+		//reset linebreak encoder
+		shooter->speed->reset();
+		fired_in_auton = false;
+		timer->Start();
 	}
 	
 	void TeleopInit(){
-
+		//strictly speaking, the shooter should already have deployed in autonomous when teleop starts
+		shooter->deploy();
+		//reset linebreak encoder
+		shooter->speed->reset();
 	}
 	
 	void DisabledPeriodic(){
+		
+		compressor->Set(true);
 		//Switches between arcade drive and tank drive
 		drive->ArcadeDrive(0.0f, 0.0f);
 		if (pilot->GetNumberedButton(5) || pilot->GetNumberedButton(6)){
@@ -188,11 +218,16 @@ public:
 	}
 	
 	void AutonPeriodic(){
-		//WE RIDE in autonomous mode (Cue horse hooves)
-		drive->ArcadeDrive(0.5f, 0.0f);
+		shooter->flywheel->Set(AUTON_SHOOTER_THROTTLE);
+		if (timer->Get() > 3 && !fired_in_auton){
+			shooter->fire();
+			fired_in_auton = true;
+		}
+		
 	}
 	
 	void TeleopPeriodic(){
+		shooter->deploy();
 		if(arcade_drive){
 			drive->ArcadeDrive(pilot->GetLeftY(), pilot->GetRightX());
 			lcd->PrintfLine(DriverStationLCD::kUser_Line1, "In arcade drive");
@@ -235,17 +270,18 @@ public:
 
 		//Starts shooter when button is pressed:
 		if (copilot->GetNumberedButton(SPIN_SHOOTER_BUTTON_1) || copilot->GetNumberedButton(SPIN_SHOOTER_BUTTON_2)){
-			shooter->flywheel->Set(throttle);
+			//shooter spins backward, so we need to negate shooter throttle
+			shooter->flywheel->Set(-throttle);
 			lcd->PrintfLine(DriverStationLCD::kUser_Line2, "Engaged at: %d%%", (int) (throttle * 100));
 		} else {
-			shooter->flywheel->Set(0);
+			shooter->flywheel->Set(0.0f);
 			lcd->PrintfLine(DriverStationLCD::kUser_Line2, "Disengaged at: %d%%", (int) (throttle * 100));
 		}
 
-		if (copilot->GetNumberedButton(FIRE_SHOOTER_BUTTON)){
-			//shooter->fire() returns false if the shooter wasn't ready to fire
-			if (shooter->fire()){
-				lcd->PrintfLine(DriverStationLCD::kUser_Line5, "fired successfully");
+		if (copilot->GetNumberedButtonPressed(FIRE_SHOOTER_BUTTON)){
+			if (shooter->ready_to_fire()){
+				lcd->PrintfLine(DriverStationLCD::kUser_Line5, "shooter ready to fire");
+				shooter->fire();
 			} else {
 				lcd->PrintfLine(DriverStationLCD::kUser_Line5, "shooter not ready to fire");
 			}
@@ -271,11 +307,20 @@ public:
 		elevator_back->Set(rollerSpeed * ELEVATOR_BACK_DIRECTION);
 		pickup_roller->Set(rollerSpeed * PICKUP_DIRECTION);
 		
-
+		if (pilot->GetNumberedButton(10) && !pressure_sensor->Get()){
+			compressor->Set(false);
+		} else {
+			compressor->Set(true);
+		}
+		
+		
 		//Displays elevator speeds
 		lcd->PrintfLine(DriverStationLCD::kUser_Line3, "elevator at %f", elevatorSpeed);
-	
-		shooter->update();
+		lcd->PrintfLine(DriverStationLCD::kUser_Line5, "encoder says: %f", shooter->speed->PIDGet());
+		
+		//don't know whether this is necessary to display the image on the dashboard, but it probably won't hurt
+		camera->GetImage();
+		
 		//Updates Driver Station
 		lcd->UpdateLCD();		
 	}
