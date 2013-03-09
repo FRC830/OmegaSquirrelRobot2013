@@ -10,12 +10,6 @@ class UltimateAscensionRobot : public IterativeRobot {
 	static const int DRIVE_RIGHT_PWM = 10;
 	static const int DRIVE_LEFT_PWM = 1;
 	
-	//Roller PWM channels:
-	static const int ELEVATOR_FRONT_PWM = 2;
-	static const int ELEVATOR_BACK_PWM = 5;
-	static const int PICK_UP_PWM = 9;
-	static const int BUMP_UP_PWM = 8;
-	
 	//Encoder channels:
 	static const int ENCODER_DRIVE_RIGHT_A_CHANNEL = 1;
 	static const int ENCODER_DRIVE_RIGHT_B_CHANNEL = 2;
@@ -25,13 +19,7 @@ class UltimateAscensionRobot : public IterativeRobot {
 	//analog channel for gyro
 	//needs to be 1 or 2 or it WON'T WORK!
 	static const int GYRO_CHANNEL = 2;
-	
-	//constants for which elevator directions are forwards
-	static const int ELEVATOR_FRONT_DIRECTION = 1;
-	static const int ELEVATOR_BACK_DIRECTION = 1;
-	static const int ELEVATOR_TOP_DIRECTION = 1;
-	static const int PICKUP_DIRECTION = 1;
-	
+
 	//spike to turn on compressor
 	static const int COMPRESSOR_DIO_CHANNEL = 14;
 	static const int PRESSURE_SENSOR_DIO_CHANNEL = 13;
@@ -43,8 +31,6 @@ class UltimateAscensionRobot : public IterativeRobot {
 	//Solenoid states:
 	static const bool HIGH_GEAR = true;
 	static const bool LOW_GEAR = false;
-	
-	static const bool FEEDER_DEPLOYED = true;
 	
 	/********************************* PILOT CONTROLS ******************************************* 
 	 *	During disabled mode, pressing the upper shoulder buttons switches to arcade drive,		*
@@ -72,17 +58,12 @@ class UltimateAscensionRobot : public IterativeRobot {
 	static const int SPIN_SHOOTER_BUTTON_2 = 6;
 	static const int RUN_ROLLERS_1 = 7;
 	static const int RUN_ROLLERS_2 = 8;
-	
-	//Floats which are used for roller and elevator speeds:
-	float rollerSpeed;
-	float elevatorSpeed;
 
 	DigitalOutput * compressor;
 	DigitalInput * pressure_sensor;
 	
 	//These are creating objects for motors & such
 	Solenoid * gear_shift;
-	Solenoid * deploy_feeder;
 	
 	Encoder * right_drive_encoder;
 	Encoder * left_drive_encoder;
@@ -137,25 +118,14 @@ public:
 		drive->SetInvertedMotor(RobotDrive::kFrontLeftMotor, true);
 		drive->SetInvertedMotor(RobotDrive::kRearLeftMotor, true);
 		
-		//Names the rollers
-		elevator_front = new Victor(ELEVATOR_FRONT_PWM);
-		elevator_back = new Victor(ELEVATOR_BACK_PWM);
-		pickup_roller = new Victor(PICK_UP_PWM);
-		
 		shooter = new Shooter();
 		throttle = 0.7f;
-		
-		//Set the roller/elevator motors to 0 just in case
-		rollerSpeed = 0.0;
-		
-		elevatorSpeed = 0.0;
 		
 		compressor = new DigitalOutput(COMPRESSOR_DIO_CHANNEL);
 		pressure_sensor = new DigitalInput(PRESSURE_SENSOR_DIO_CHANNEL);
 		
 		//Names our fancy shifter
 		gear_shift = new Solenoid(GEAR_SHIFT_SOLENOID_CHANNEL);
-		deploy_feeder = new Solenoid(DEPLOY_FEEDER_SOLENOID_CHANNEL);
 		
 		//gyro = new Gyro(GYRO_CHANNEL);
 		//gyro->Reset();
@@ -177,7 +147,6 @@ public:
 		drive->ArcadeDrive(0.0f, 0.0f);
 		gear_shift->Set(HIGH_GEAR);
 		lcd->PrintfLine(DriverStationLCD::kUser_Line4, "in high gear");
-		deploy_feeder->Set(!FEEDER_DEPLOYED);
 	}
 	
 	void AutonomousInit(){
@@ -287,7 +256,7 @@ public:
 		//Starts shooter when button is pressed:
 		if (copilot->GetNumberedButton(SPIN_SHOOTER_BUTTON_1) || copilot->GetNumberedButton(SPIN_SHOOTER_BUTTON_2)){
 			//shooter spins backward, so we need to negate shooter throttle
-			shooter->flywheel->Set(-throttle);
+			shooter->flywheel->Set(throttle);
 			lcd->PrintfLine(DriverStationLCD::kUser_Line2, "Engaged at: %d%%", (int) (throttle * 100));
 		} else {
 			shooter->flywheel->Set(0.0f);
@@ -295,12 +264,13 @@ public:
 		}
 		
 		if (copilot->GetNumberedButtonPressed(FIRE_SHOOTER_BUTTON)){
-			if (shooter->ready_to_fire()){
-				lcd->PrintfLine(DriverStationLCD::kUser_Line5, "shooter ready to fire");
+				lcd->PrintfLine(DriverStationLCD::kUser_Line3, "firing");
 				shooter->fire();
-			} else {
-				lcd->PrintfLine(DriverStationLCD::kUser_Line5, "shooter not ready to fire");
-			}
+		}
+		
+		if (copilot->GetNumberedButtonPressed(3)){
+			lcd->PrintfLine(DriverStationLCD::kUser_Line3, "not firing");
+			shooter->stop_firing();	
 		}
 		//Gives the copilot control of the shooter throttle
 		
@@ -310,47 +280,20 @@ public:
 		if (copilot->GetNumberedButtonPressed(1) && throttle >= 0.5){
 			throttle -= 0.05;
 		}
-		if (copilot->GetNumberedButton(8) 
-				//&& !shooter->max->Get()
-				){
-			shooter->disc_deployer->Set(0.5f);
-			lcd->PrintfLine(DriverStationLCD::kUser_Line3, "spinning feeder forward");
-		} else if (copilot->GetNumberedButton(7) 
-				//&& !shooter->min->Get()
-				){
-			shooter->disc_deployer->Set(-0.5f);
-			lcd->PrintfLine(DriverStationLCD::kUser_Line3, "spinning feeder back");
-		} else {
-			lcd->PrintfLine(DriverStationLCD::kUser_Line3, "not spinning feeder");
-		}
 		
-		
-		//The Fancy Roller Code:
-		//Speeds & slows the rollers:
-		if (rollerSpeed <= 0.99 && copilot->GetNumberedButton(RUN_ROLLERS_1) || copilot->GetNumberedButton(RUN_ROLLERS_2)){
-			rollerSpeed += .01;
-		} else if (rollerSpeed >= .01){
-			rollerSpeed -= .01;
-		}
-		
-		//Set the victors to the values
-		elevator_front->Set(rollerSpeed * ELEVATOR_FRONT_DIRECTION);
-		elevator_back->Set(rollerSpeed * ELEVATOR_BACK_DIRECTION);
-		pickup_roller->Set(rollerSpeed * PICKUP_DIRECTION);
-		
+		//compressor is backwards, so setting it to false turns it on and to true turns it off
+		//pressure sensor returns true when pressure >= 120psi
 		if (pilot->GetNumberedButton(10) && !pressure_sensor->Get()){
 			compressor->Set(false);
 		} else {
 			compressor->Set(true);
 		}
+		lcd->PrintfLine(DriverStationLCD::kUser_Line5, "max: %d min: %d pr: %d", shooter->max->Get(), shooter->min->Get(), pressure_sensor->Get());
+		//lcd->PrintfLine(DriverStationLCD::kUser_Line5, "encoder says: %f", shooter->speed->PIDGet());
 		
-		//Displays elevator speeds
-		//lcd->PrintfLine(DriverStationLCD::kUser_Line3, "elevator at %f", elevatorSpeed);
-		//lcd->PrintfLine(DriverStationLCD::kUser_Line3,"max: %d min: %d", shooter->max->Get(), shooter->min->Get());
-		lcd->PrintfLine(DriverStationLCD::kUser_Line5, "encoder says: %f", shooter->speed->PIDGet());
-		
-		//don't know whether this is necessary to display the image on the dashboard, but it probably won't hurt
 		//camera->GetImage();
+		
+		shooter->update();
 		
 		//Updates Driver Station
 		lcd->UpdateLCD();		

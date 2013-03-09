@@ -11,6 +11,7 @@ Shooter::Shooter(){
 	flywheel = new Victor(FLYWHEEL_PWM);
 	tipper = new Victor(TIPPER_PWM);
 	disc_deployer = new Victor(DISC_DEPLOYER_PWM);
+	moving_forward = true;
 	firing = false;
 	angle = new Encoder(ENCODER_SHOOTER_ANGLE_A_CHANNEL, ENCODER_SHOOTER_ANGLE_B_CHANNEL);
 	speed = new LineBreakEncoder();
@@ -31,25 +32,44 @@ bool Shooter::ready_to_fire(){
 	return (flywheel->Get() < 0.1 || (speed_pid->IsEnabled() && speed_pid->GetError() > 0.1));
 }
 
-//TODO: this is prolly also gonna wanna move the elevator
-//returns whether or not we actually fired
-bool Shooter::fire(){
+/* makes the shooter fire once
+ * won't do anything unless you're calling update() every cycle
+ */
+void Shooter::fire(){
+	firing = true;
+}
+
+void Shooter::stop_firing(){
+	firing = false;
+}
+
+//call this every cycle
+void Shooter::update(){
 	//don't let us shoot if the flywheel isn't spinning or if we're not up to speed or if we're already firing
+	/* testing 
 	if (flywheel->Get() < 0.1 || 
 			(speed_pid->IsEnabled() && speed_pid->GetError() > 0.1) || firing){
 		return false;
+	}*/
+	
+	if (firing){
+		if(moving_forward){
+			if (max->Get()){
+				disc_deployer->Set(0.5f);
+			} else {
+				moving_forward = false;
+			}
+		} else {
+			if (min->Get()){
+				disc_deployer->Set(-0.5f);
+			} else {
+				moving_forward = true;
+				firing = false; 
+			}
+		}
+	} else {
+		disc_deployer->Set(0.0f);
 	}
-	firing = true;
-	//move the deployer out until it hits the first switch...
-	while(!max->Get()){
-		disc_deployer->Set(0.1f);
-	}
-	//then move it back again until it hits the second one
-	while(!min->Get()){
-		disc_deployer->Set(-0.1f);
-	}
-	firing = false;
-	return true;
 }
 void Shooter::set_speed(float new_speed){
 	speed_pid->SetSetpoint(new_speed);
