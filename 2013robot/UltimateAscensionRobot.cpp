@@ -14,7 +14,7 @@ class UltimateAscensionRobot : public IterativeRobot {
 	static const int ELEVATOR_FRONT_PWM = 2;
 	static const int ELEVATOR_BACK_PWM = 5;
 	static const int PICK_UP_PWM = 9;
-	static const int BUMP_UP_PWM = 7;
+	static const int BUMP_UP_PWM = 8;
 	
 	//Encoder channels:
 	static const int ENCODER_DRIVE_RIGHT_A_CHANNEL = 1;
@@ -44,7 +44,6 @@ class UltimateAscensionRobot : public IterativeRobot {
 	static const bool HIGH_GEAR = true;
 	static const bool LOW_GEAR = false;
 	
-	static const bool SHOOTER_DEPLOYED = true;
 	static const bool FEEDER_DEPLOYED = true;
 	
 	/********************************* PILOT CONTROLS ******************************************* 
@@ -63,11 +62,12 @@ class UltimateAscensionRobot : public IterativeRobot {
 	/********************************* COPILOT CONTROLS ***************************************** 
 	 *	Pressing up or down on the dpad raises or lowers throttle by 5% (default is 70%).		*
 	 *	Pressing an upper shoulder button spins the flywheel at the current throttle speed.		*
-	 *	Pressing button 3 (the B button) fires a disc out of the shooter if it's up to speed.	*
+	 *	Pressing the B button fires a disc out of the shooter if it's up to speed.				*
 	 *	Pressing a lower shoulder button slightly increases the roller speed (hold to spin).	*
 	 ********************************************************************************************/
 
-	static const int FIRE_SHOOTER_BUTTON = 3;
+	//b button
+	static const int FIRE_SHOOTER_BUTTON = 2;
 	static const int SPIN_SHOOTER_BUTTON_1 = 5;
 	static const int SPIN_SHOOTER_BUTTON_2 = 6;
 	static const int RUN_ROLLERS_1 = 7;
@@ -82,7 +82,6 @@ class UltimateAscensionRobot : public IterativeRobot {
 	
 	//These are creating objects for motors & such
 	Solenoid * gear_shift;
-	Solenoid * deploy_shooter;
 	Solenoid * deploy_feeder;
 	
 	Encoder * right_drive_encoder;
@@ -91,7 +90,6 @@ class UltimateAscensionRobot : public IterativeRobot {
 	Gyro * gyro;
 	
 	bool arcade_drive;
-	static const float SMALL_ADJUSTMENT_UNIT = 0.1;
 	RobotDrive * drive;
 	Gamepad * pilot;
 	Gamepad * copilot;
@@ -116,7 +114,7 @@ class UltimateAscensionRobot : public IterativeRobot {
 	Timer * timer;
 	
 	Shooter * shooter;
-	
+
 	//Here we get to the REAL code
 public:
 	UltimateAscensionRobot() {
@@ -179,12 +177,11 @@ public:
 		drive->ArcadeDrive(0.0f, 0.0f);
 		gear_shift->Set(HIGH_GEAR);
 		lcd->PrintfLine(DriverStationLCD::kUser_Line4, "in high gear");
-		shooter->undeploy();
 		deploy_feeder->Set(!FEEDER_DEPLOYED);
 	}
 	
-	void AutonInit(){
-		shooter->deploy();
+	void AutonomousInit(){
+		//necessary to deploy shooter
 		gear_shift->Set(LOW_GEAR);
 		//reset linebreak encoder
 		shooter->speed->reset();
@@ -193,8 +190,8 @@ public:
 	}
 	
 	void TeleopInit(){
-		//strictly speaking, the shooter should already have deployed in autonomous when teleop starts
-		shooter->deploy();
+		gear_shift->Set(LOW_GEAR);
+		lcd->PrintfLine(DriverStationLCD::kUser_Line4, "in low gear");
 		//reset linebreak encoder
 		shooter->speed->reset();
 	}
@@ -216,23 +213,57 @@ public:
 		}
 	}
 	
-	void AutonPeriodic(){
+	void AutonomousPeriodic(){
+		/*
 		shooter->flywheel->Set(AUTON_SHOOTER_THROTTLE);
 		if (timer->Get() > 3 && !fired_in_auton){
 			shooter->fire();
 			fired_in_auton = true;
 		}
-		
+		*/
+		if (timer->Get() >= 1 && gear_shift->Get() == LOW_GEAR){
+			gear_shift->Set(HIGH_GEAR);
+		}
+		if (timer->Get() >= 2 && timer->Get() <= 11){
+			drive->ArcadeDrive(0.4f, 0.0f);
+		}
+		/*
+		if (timer->Get() == 11){
+			drive->ArcadeDrive(-0.4f, 0.0f);
+		}
+		if (timer->Get() >= 11){
+			drive->ArcadeDrive(0.4f, 0.0f);
+		}
+		*/
+		lcd->PrintfLine(DriverStationLCD::kUser_Line2, "time: %d", timer->Get());
+		lcd->UpdateLCD();
 	}
 	
+	
+	float clamp(float val,float min,float max)
+	{
+		float retVal = val;
+		if(val < min )
+		{ 
+			retVal = min;
+		}
+		else if( val > max )
+		{
+			retVal = max;
+		}
+		return retVal;
+	}
 	void TeleopPeriodic(){
 		
-		shooter->deploy();
+		float limiter = 1.0;
+		float top = limiter;
+		float bot = -1.0*limiter;
+
 		if(arcade_drive){
-			drive->ArcadeDrive(pilot->GetLeftY(), pilot->GetRightX());
+			drive->ArcadeDrive(clamp(pilot->GetLeftY(),bot,top), clamp(pilot->GetRightX(),bot,top));
 			lcd->PrintfLine(DriverStationLCD::kUser_Line1, "In arcade drive");
 		} else {
-			drive->TankDrive(pilot->GetLeftY(), pilot->GetRightY());
+			drive->TankDrive(clamp(pilot->GetLeftY(),bot,top), clamp(pilot->GetRightX(),bot,top));
 			lcd->PrintfLine(DriverStationLCD::kUser_Line1, "In tank drive");
 		}
 		
@@ -244,11 +275,11 @@ public:
 			gear_shift->Set(HIGH_GEAR);
 		}
 		
-		if (gear_shift->Get() == HIGH_GEAR)
+		if (gear_shift->Get() == HIGH_GEAR){
 			lcd->PrintfLine(DriverStationLCD::kUser_Line4, "in high gear");
-		
+		}
 		//Small adjustments are only allowed if we're in low gear
-		else if (gear_shift->Get() == LOW_GEAR) {
+		if (gear_shift->Get() == LOW_GEAR) {
 			lcd->PrintfLine(DriverStationLCD::kUser_Line4, "in low gear");
 		}
 		
@@ -276,10 +307,22 @@ public:
 		if (copilot->GetNumberedButtonPressed(4) && throttle <= 0.95){
 			throttle += 0.05;
 		}
-		if (copilot->GetNumberedButtonPressed(2) && throttle >= 0.5){
+		if (copilot->GetNumberedButtonPressed(1) && throttle >= 0.5){
 			throttle -= 0.05;
 		}
-		shooter->disc_deployer->Set(copilot->GetRightX() / 4);
+		if (copilot->GetNumberedButton(8) 
+				//&& !shooter->max->Get()
+				){
+			shooter->disc_deployer->Set(0.5f);
+			lcd->PrintfLine(DriverStationLCD::kUser_Line3, "spinning feeder forward");
+		} else if (copilot->GetNumberedButton(7) 
+				//&& !shooter->min->Get()
+				){
+			shooter->disc_deployer->Set(-0.5f);
+			lcd->PrintfLine(DriverStationLCD::kUser_Line3, "spinning feeder back");
+		} else {
+			lcd->PrintfLine(DriverStationLCD::kUser_Line3, "not spinning feeder");
+		}
 		
 		
 		//The Fancy Roller Code:
@@ -301,9 +344,6 @@ public:
 			compressor->Set(true);
 		}
 		
-		if (pilot->GetNumberedButton(9)){
-			shooter->max->Get();
-		}
 		//Displays elevator speeds
 		//lcd->PrintfLine(DriverStationLCD::kUser_Line3, "elevator at %f", elevatorSpeed);
 		//lcd->PrintfLine(DriverStationLCD::kUser_Line3,"max: %d min: %d", shooter->max->Get(), shooter->min->Get());

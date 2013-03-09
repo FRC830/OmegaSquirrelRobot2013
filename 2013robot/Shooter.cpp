@@ -6,6 +6,8 @@ Shooter::Shooter(){
 	p = 0.1f;
 	i = 0.0f;
 	d = 0.0f;
+	max = new DigitalInput(DISC_DEPLOYER_MAX_SWITCH);
+	min = new DigitalInput(DISC_DEPLOYER_MIN_SWITCH);
 	flywheel = new Victor(FLYWHEEL_PWM);
 	tipper = new Victor(TIPPER_PWM);
 	disc_deployer = new Victor(DISC_DEPLOYER_PWM);
@@ -13,7 +15,6 @@ Shooter::Shooter(){
 	angle = new Encoder(ENCODER_SHOOTER_ANGLE_A_CHANNEL, ENCODER_SHOOTER_ANGLE_B_CHANNEL);
 	speed = new LineBreakEncoder();
 	speed->reset();
-	deployer = new DoubleSolenoid(DEPLOY_SHOOTER_SOLENOID_CHANNEL_1, DEPLOY_SHOOTER_SOLENOID_CHANNEL_2);
 	speed_pid = new PIDController(p, i, d, speed, flywheel);
 	speed_pid->Disable();
 	angle_pid = new PIDController(p, i, d, angle, tipper);
@@ -25,15 +26,6 @@ void Shooter::set_pid_values(float p, float i, float d){
 	this->i = i;
 	this->d = d;
 }
-
-void Shooter::deploy(){
-	deployer->Set(SHOOTER_DEPLOYED);
-}
-
-void Shooter::undeploy(){
-	deployer->Set(SHOOTER_UNDEPLOYED);
-}
-
 
 bool Shooter::ready_to_fire(){
 	return (flywheel->Get() < 0.1 || (speed_pid->IsEnabled() && speed_pid->GetError() > 0.1));
