@@ -10,15 +10,14 @@ Shooter::Shooter(){
 	min = new DigitalInput(DISC_DEPLOYER_MIN_SWITCH);
 	flywheel = new Victor(FLYWHEEL_PWM);
 	tipper = new Victor(TIPPER_PWM);
-	disc_deployer = new Victor(DISC_DEPLOYER_PWM);
+	feeder = new Victor(FEEDER_PWM);
 	moving_forward = true;
 	firing = false;
-	angle = new Encoder(ENCODER_SHOOTER_ANGLE_A_CHANNEL, ENCODER_SHOOTER_ANGLE_B_CHANNEL);
-	speed = new LineBreakEncoder();
-	speed->reset();
-	speed_pid = new PIDController(p, i, d, speed, flywheel);
+	angle_encoder = new Encoder(ENCODER_SHOOTER_ANGLE_A_CHANNEL, ENCODER_SHOOTER_ANGLE_B_CHANNEL);
+	speed_encoder = new LineBreakEncoder(LINE_BREAK_DIO_CHANNEL, 2);
+	speed_pid = new PIDController(p, i, d, speed_encoder, flywheel);
 	speed_pid->Disable();
-	angle_pid = new PIDController(p, i, d, angle, tipper);
+	angle_pid = new PIDController(p, i, d, angle_encoder, tipper);
 	angle_pid->Disable();
 }
 
@@ -29,51 +28,44 @@ void Shooter::set_pid_values(float p, float i, float d){
 }
 
 bool Shooter::ready_to_fire(){
-	return (flywheel->Get() < 0.1 || (speed_pid->IsEnabled() && speed_pid->GetError() > 0.1));
+	return (speed_pid->IsEnabled() && speed_pid->GetError() < 0.1);
 }
 
-/* makes the shooter fire once
- * won't do anything unless you're calling update() every cycle
- */
+// makes the shooter fire once
+// won't do anything unless you're calling update() every cycle
 void Shooter::fire(){
 	firing = true;
 }
 
+//stops the shooter firing
+//not normally necessary
 void Shooter::stop_firing(){
 	firing = false;
 }
 
 //call this every cycle
 void Shooter::update(){
-	//don't let us shoot if the flywheel isn't spinning or if we're not up to speed or if we're already firing
-	/* testing 
-	if (flywheel->Get() < 0.1 || 
-			(speed_pid->IsEnabled() && speed_pid->GetError() > 0.1) || firing){
-		return false;
-	}*/
-	
 	if (firing){
 		if(moving_forward){
 			if (max->Get()){
-				disc_deployer->Set(0.5f);
+				feeder->Set(0.5f);
 			} else {
 				moving_forward = false;
 			}
 		} else {
 			if (min->Get()){
-				disc_deployer->Set(-0.5f);
+				feeder->Set(-0.5f);
 			} else {
 				moving_forward = true;
 				firing = false; 
 			}
 		}
 	} else {
-		disc_deployer->Set(0.0f);
+		feeder->Set(0.0f);
 	}
 }
 void Shooter::set_speed(float new_speed){
 	speed_pid->SetSetpoint(new_speed);
-	speed->reset();
 	speed_pid->Enable();
 }
 

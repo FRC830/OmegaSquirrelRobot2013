@@ -1,25 +1,15 @@
  #include "WPILib.h"
 #include "LineBreakEncoder.h"
 
-LineBreakEncoder::LineBreakEncoder(int tpr){
-	counter = new Counter(LINE_BREAK_DIO_CHANNEL);
-	timer = new Timer();
+LineBreakEncoder::LineBreakEncoder(int dio_channel, int tpr){
+	ticks_per_rev = tpr;
+	counter = new Counter(dio_channel);
 	counter->Start();
-	timer->Start();
 }
 
 double LineBreakEncoder::PIDGet(){
-	//ticks_passed / ticks_per_rev = # revolutions
-	//# revolutions / time elapsed in seconds = revs/sec
-	double result = (counter->Get() / ticks_per_rev) / timer->Get();
-	return result;
-}
-
-
-//you HAVE to call this every time you change target speeds
-void LineBreakEncoder::reset(){
-	counter->Reset();
-	counter->Start();
-	timer->Reset();
-	timer->Start();
+	//period measures time in seconds between signals from the line break
+	//if there are n signals per revolution, period * n = seconds per revolution
+	//we want revolutions per second, so we take the reciprocal of this 
+	return 1.0 / (counter->GetPeriod() * ticks_per_rev);
 }

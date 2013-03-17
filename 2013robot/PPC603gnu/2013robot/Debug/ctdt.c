@@ -9,7 +9,7 @@
 
 void _GLOBAL__I__Z20FRC_userClassFactoryv();
 
-void _GLOBAL__I__ZN16LineBreakEncoderC2Ei();
+void _GLOBAL__I__ZN16LineBreakEncoderC2Eii();
 
 void _GLOBAL__I__ZN7ShooterC2Ev();
 
@@ -65,7 +65,7 @@ extern void (*_ctors[])();
 void (*_ctors[])() =
     {
     _GLOBAL__I__Z20FRC_userClassFactoryv,
-    _GLOBAL__I__ZN16LineBreakEncoderC2Ei,
+    _GLOBAL__I__ZN16LineBreakEncoderC2Eii,
     _GLOBAL__I__ZN7ShooterC2Ev,
     _GLOBAL__I__ZN8PIDDriveC2EP6VictorS1_fff,
     _GLOBAL__I__ZN12PrintCommandC2EPKc,
@@ -96,7 +96,7 @@ void (*_ctors[])() =
 
 void _GLOBAL__D__Z20FRC_userClassFactoryv();
 
-void _GLOBAL__D__ZN16LineBreakEncoderC2Ei();
+void _GLOBAL__D__ZN16LineBreakEncoderC2Eii();
 
 void _GLOBAL__D__ZN7ShooterC2Ev();
 
@@ -144,7 +144,7 @@ extern void (*_dtors[])();
 void (*_dtors[])() =
     {
     _GLOBAL__D__Z20FRC_userClassFactoryv,
-    _GLOBAL__D__ZN16LineBreakEncoderC2Ei,
+    _GLOBAL__D__ZN16LineBreakEncoderC2Eii,
     _GLOBAL__D__ZN7ShooterC2Ev,
     _GLOBAL__D__ZN8PIDDriveC2EP6VictorS1_fff,
     _GLOBAL__D__ZN9Scheduler9_instanceE,

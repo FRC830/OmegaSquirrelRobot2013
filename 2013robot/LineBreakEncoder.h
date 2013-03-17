@@ -5,15 +5,11 @@
 
 class LineBreakEncoder : public PIDSource {
 private:
-	static const int LINE_BREAK_DIO_CHANNEL = 1; //TODO: determine this
-	Counter * counter;
-	Timer * timer;
-	int ticks_per_rev;
+	Counter * counter;	//counter to track linebreak signals
+	int ticks_per_rev;	//number of ticks in a revolution
 public:
-	LineBreakEncoder(int tpr = 2);
+	LineBreakEncoder(int dio_channel, int tpr);
 	virtual double PIDGet();
-	//you HAVE to call this every time you change target speeds
-	void reset();
 };
 
 #endif

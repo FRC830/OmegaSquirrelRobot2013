@@ -149,20 +149,23 @@ public:
 		lcd->PrintfLine(DriverStationLCD::kUser_Line4, "in high gear");
 	}
 	
-	void AutonomousInit(){
-		//necessary to deploy shooter
-		gear_shift->Set(LOW_GEAR);
-		//reset linebreak encoder
-		shooter->speed->reset();
-		fired_in_auton = false;
+	void MoveInAutonInit(){
+		gear_shift->Set(HIGH_GEAR);
 		timer->Start();
+	}
+	
+	void FireInAutonInit(){
+		shooter->set_speed(AUTON_SHOOTER_SPEED);
+		fired_in_auton = false;
+	}
+	
+	void AutonomousInit(){
+		MoveInAutonInit();
 	}
 	
 	void TeleopInit(){
 		gear_shift->Set(LOW_GEAR);
 		lcd->PrintfLine(DriverStationLCD::kUser_Line4, "in low gear");
-		//reset linebreak encoder
-		shooter->speed->reset();
 	}
 	
 	void DisabledPeriodic(){
@@ -182,18 +185,19 @@ public:
 		}
 	}
 	
-	void AutonomousPeriodic(){
-		/*
-		shooter->flywheel->Set(AUTON_SHOOTER_THROTTLE);
-		if (timer->Get() > 3 && !fired_in_auton){
-			shooter->fire();
+	void FireInAutonPeriodic(){
+		shooter->set_speed(AUTON_SHOOTER_SPEED);
+		if (shooter->ready_to_fire() && !fired_in_auton){
 			fired_in_auton = true;
+			shooter->fire();
 		}
-		*/
-		if (timer->Get() >= 1 && gear_shift->Get() == LOW_GEAR){
-			gear_shift->Set(HIGH_GEAR);
-		}
-		if (timer->Get() >= 2 && timer->Get() <= 11){
+		shooter->update();
+	}
+	
+	void MoveInAutonPeriodic(){
+
+		if (timer->Get() >= 1 && timer->Get() <= 10){
+			//move straight forward at 40%
 			drive->ArcadeDrive(0.4f, 0.0f);
 		}
 		/*
@@ -204,10 +208,11 @@ public:
 			drive->ArcadeDrive(0.4f, 0.0f);
 		}
 		*/
-		lcd->PrintfLine(DriverStationLCD::kUser_Line2, "time: %d", timer->Get());
-		lcd->UpdateLCD();
 	}
 	
+	void AutonomousPeriodic(){
+		MoveInAutonPeriodic();
+	}
 	
 	float clamp(float val,float min,float max)
 	{
