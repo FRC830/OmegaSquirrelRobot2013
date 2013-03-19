@@ -4,6 +4,7 @@
 LineBreakEncoder::LineBreakEncoder(int dio_channel, int tpr){
 	ticks_per_rev = tpr;
 	counter = new Counter(dio_channel);
+	counter->Reset();
 	counter->Start();
 }
 

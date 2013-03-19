@@ -140,6 +140,10 @@ public:
 		
 		//Names the Driver Station
 		lcd = DriverStationLCD::GetInstance();
+		SmartDashboard::PutNumber("P", 0.1f);
+		SmartDashboard::PutNumber("I", 0.0f);
+		SmartDashboard::PutNumber("D", 0.0f);
+		SmartDashboard::PutNumber("speed", 50.0f);
 	}
 	
 	//Stops driving in disabled
@@ -183,6 +187,10 @@ public:
 			lcd->PrintfLine(DriverStationLCD::kUser_Line1, "In tank drive");
 			lcd->UpdateLCD();
 		}
+		float p = (float) SmartDashboard::GetNumber("P");
+		float i = (float) SmartDashboard::GetNumber("I");
+		float d = (float) SmartDashboard::GetNumber("D");
+		shooter->set_pid_values(p, i, d);
 	}
 	
 	void FireInAutonPeriodic(){
@@ -228,13 +236,20 @@ public:
 		return retVal;
 	}
 	void TeleopPeriodic(){
-		
 		float limiter = 1.0;
 		float top = limiter;
 		float bot = -1.0*limiter;
 
 		if(arcade_drive){
-			drive->ArcadeDrive(clamp(pilot->GetLeftY(),bot,top), clamp(pilot->GetRightX(),bot,top));
+			float speed = clamp(pilot->GetLeftY(), bot, top);
+			float turn = clamp(pilot->GetRightX(), bot, top);
+			if (speed <= 0.05f && speed >= -0.05f){
+				speed = 0.0f;
+			}
+			if (turn <= 0.05f && turn >= -0.05f){
+				turn = 0.0f;
+			}
+			drive->ArcadeDrive(speed, turn);
 			lcd->PrintfLine(DriverStationLCD::kUser_Line1, "In arcade drive");
 		} else {
 			drive->TankDrive(clamp(pilot->GetLeftY(),bot,top), clamp(pilot->GetRightX(),bot,top));
@@ -250,21 +265,23 @@ public:
 		}
 		
 		if (gear_shift->Get() == HIGH_GEAR){
-			lcd->PrintfLine(DriverStationLCD::kUser_Line4, "in high gear");
+			lcd->PrintfLine(DriverStationLCD::kUser_Line3, "in high gear");
 		}
 		//Small adjustments are only allowed if we're in low gear
 		if (gear_shift->Get() == LOW_GEAR) {
-			lcd->PrintfLine(DriverStationLCD::kUser_Line4, "in low gear");
+			lcd->PrintfLine(DriverStationLCD::kUser_Line3, "in low gear");
 		}
 		
 
 		//Starts shooter when button is pressed:
 		if (copilot->GetNumberedButton(SPIN_SHOOTER_BUTTON_1) || copilot->GetNumberedButton(SPIN_SHOOTER_BUTTON_2)){
 			//shooter spins backward, so we need to negate shooter throttle
-			shooter->flywheel->Set(throttle);
+			//shooter->flywheel->Set(throttle);
+			shooter->set_speed((float) SmartDashboard::GetNumber("speed"));
 			lcd->PrintfLine(DriverStationLCD::kUser_Line2, "Engaged at: %d%%", (int) (throttle * 100));
 		} else {
-			shooter->flywheel->Set(0.0f);
+			//shooter->flywheel->Set(0.0f);
+			shooter->set_speed(0.0f);
 			lcd->PrintfLine(DriverStationLCD::kUser_Line2, "Disengaged at: %d%%", (int) (throttle * 100));
 		}
 		
@@ -282,7 +299,7 @@ public:
 		if (copilot->GetNumberedButtonPressed(4) && throttle <= 0.95){
 			throttle += 0.05;
 		}
-		if (copilot->GetNumberedButtonPressed(1) && throttle >= 0.5){
+		if (copilot->GetNumberedButtonPressed(1) && throttle >= 0.05){
 			throttle -= 0.05;
 		}
 		
@@ -293,8 +310,9 @@ public:
 		} else {
 			compressor->Set(true);
 		}
-		lcd->PrintfLine(DriverStationLCD::kUser_Line5, "max: %d min: %d pr: %d", shooter->max->Get(), shooter->min->Get(), pressure_sensor->Get());
-		//lcd->PrintfLine(DriverStationLCD::kUser_Line5, "encoder says: %f", shooter->speed->PIDGet());
+		lcd->PrintfLine(DriverStationLCD::kUser_Line4, "counter period at: %f", shooter->speed_encoder->counter->GetPeriod());
+		lcd->PrintfLine(DriverStationLCD::kUser_Line5, "encoder says: %f", shooter->speed_encoder->PIDGet());
+		lcd->PrintfLine(DriverStationLCD::kUser_Line6, "p: %f i: %f d: %f", shooter->p, shooter->i, shooter->d);
 		
 		//camera->GetImage();
 		

@@ -15,17 +15,15 @@ class Shooter {
 	static const int ENCODER_SHOOTER_ANGLE_B_CHANNEL = 6;
 	static const int LINE_BREAK_DIO_CHANNEL = 1; //TODO: determine this
 	//limit switch channels
-	static const int DISC_DEPLOYER_MAX_SWITCH = 11; 
-	static const int DISC_DEPLOYER_MIN_SWITCH = 12;
-	bool moving_forward;
+	static const int DISC_DEPLOYER_LIMIT_SWITCH = 11;
+	bool passed_switch;
 	bool firing;
 	
 public:
 	Victor * flywheel;
 	Victor * tipper;
 	Victor * feeder;
-	DigitalInput * max;
-	DigitalInput * min;
+	DigitalInput * limit_switch;
 	Encoder * angle_encoder;
 	LineBreakEncoder * speed_encoder;
 	PIDController * speed_pid;
