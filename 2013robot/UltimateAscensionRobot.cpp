@@ -140,9 +140,9 @@ public:
 		
 		//Names the Driver Station
 		lcd = DriverStationLCD::GetInstance();
-		SmartDashboard::PutNumber("P", 0.1f);
-		SmartDashboard::PutNumber("I", 0.0f);
-		SmartDashboard::PutNumber("D", 0.0f);
+		SmartDashboard::PutNumber("P", 0.450f);
+		SmartDashboard::PutNumber("I", 0.200f);
+		SmartDashboard::PutNumber("D", 0.050f);
 		SmartDashboard::PutNumber("speed", 50.0f);
 	}
 	
@@ -170,6 +170,10 @@ public:
 	void TeleopInit(){
 		gear_shift->Set(LOW_GEAR);
 		lcd->PrintfLine(DriverStationLCD::kUser_Line4, "in low gear");
+		float p = (float) SmartDashboard::GetNumber("P");
+		float i = (float) SmartDashboard::GetNumber("I");
+		float d = (float) SmartDashboard::GetNumber("D");
+		shooter->set_pid_values(p, i, d);
 	}
 	
 	void DisabledPeriodic(){
@@ -187,10 +191,6 @@ public:
 			lcd->PrintfLine(DriverStationLCD::kUser_Line1, "In tank drive");
 			lcd->UpdateLCD();
 		}
-		float p = (float) SmartDashboard::GetNumber("P");
-		float i = (float) SmartDashboard::GetNumber("I");
-		float d = (float) SmartDashboard::GetNumber("D");
-		shooter->set_pid_values(p, i, d);
 	}
 	
 	void FireInAutonPeriodic(){
@@ -239,6 +239,14 @@ public:
 		float limiter = 1.0;
 		float top = limiter;
 		float bot = -1.0*limiter;
+		
+		// PID tuning, output to console.
+		int currentPIDvalue = shooter->speed_encoder->PIDGet();
+		std::cout << currentPIDvalue << ' ';
+		for (int i = 0; i < currentPIDvalue; i++) {
+			std::cout << '|';
+		}
+		std::cout << std::endl;
 
 		if(arcade_drive){
 			float speed = clamp(pilot->GetLeftY(), bot, top);
@@ -252,7 +260,7 @@ public:
 			drive->ArcadeDrive(speed, turn);
 			lcd->PrintfLine(DriverStationLCD::kUser_Line1, "In arcade drive");
 		} else {
-			drive->TankDrive(clamp(pilot->GetLeftY(),bot,top), clamp(pilot->GetRightX(),bot,top));
+			drive->TankDrive(clamp(pilot->GetLeftY(),bot,top), clamp(pilot->GetRightY(),bot,top));
 			lcd->PrintfLine(DriverStationLCD::kUser_Line1, "In tank drive");
 		}
 		
@@ -280,8 +288,8 @@ public:
 			shooter->set_speed((float) SmartDashboard::GetNumber("speed"));
 			lcd->PrintfLine(DriverStationLCD::kUser_Line2, "Engaged at: %d%%", (int) (throttle * 100));
 		} else {
-			//shooter->flywheel->Set(0.0f);
-			shooter->set_speed(0.0f);
+			shooter->flywheel->Set(0.0f);
+			shooter->disable_pids();
 			lcd->PrintfLine(DriverStationLCD::kUser_Line2, "Disengaged at: %d%%", (int) (throttle * 100));
 		}
 		

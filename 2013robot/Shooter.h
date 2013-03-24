@@ -31,7 +31,7 @@ public:
 	float p, i, d;
 	
 	Shooter();
-	
+	void disable_pids();
 	void set_pid_values(float p, float i = 0.0f, float d = 0.0f);
 	bool ready_to_fire();
 	void fire();

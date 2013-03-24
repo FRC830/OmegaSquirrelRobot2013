@@ -20,6 +20,10 @@ Shooter::Shooter(){
 	angle_pid->Disable();
 }
 
+void Shooter::disable_pids(){
+	speed_pid->Disable();
+}
+
 void Shooter::set_pid_values(float p, float i, float d){
 	this->p = p;
 	this->i = i;
