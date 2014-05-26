@@ -7,7 +7,7 @@
 //class to hold all of the shooter stuff
 class Shooter {
 	//shooter PWM
-	static const int FLYWHEEL_PWM = 5;
+	static const int FLYWHEEL_PWM = 3;
 	static const int TIPPER_PWM = 6;
 	static const int FEEDER_PWM = 8;
 	//encoder channels

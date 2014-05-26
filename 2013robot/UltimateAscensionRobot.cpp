@@ -83,7 +83,7 @@ class UltimateAscensionRobot : public IterativeRobot {
 	Victor * elevator_back;
 	Victor * pickup_roller;
 
-	//AxisCamera * camera;
+	AxisCamera * camera;
 	
 	float throttle;
 	//victor value for auton mode
@@ -136,7 +136,7 @@ public:
 		timer = new Timer();
 		
 		//our variable is a pointer and GetInstance() returns an object, so we take the address
-		//camera = &(AxisCamera::GetInstance());
+		camera = &(AxisCamera::GetInstance());
 		
 		//Names the Driver Station
 		lcd = DriverStationLCD::GetInstance();
@@ -239,15 +239,15 @@ public:
 		float limiter = 1.0;
 		float top = limiter;
 		float bot = -1.0*limiter;
-		
+		/*
 		// PID tuning, output to console.
-		int currentPIDvalue = shooter->speed_encoder->PIDGet();
+		int currentPIDvalue = (int) shooter->speed_encoder->PIDGet();
 		std::cout << currentPIDvalue << ' ';
 		for (int i = 0; i < currentPIDvalue; i++) {
 			std::cout << '|';
 		}
 		std::cout << std::endl;
-
+		*/
 		if(arcade_drive){
 			float speed = clamp(pilot->GetLeftY(), bot, top);
 			float turn = clamp(pilot->GetRightX(), bot, top);
@@ -257,10 +257,10 @@ public:
 			if (turn <= 0.05f && turn >= -0.05f){
 				turn = 0.0f;
 			}
-			drive->ArcadeDrive(speed, turn);
+			drive->ArcadeDrive(speed, -1*turn);
 			lcd->PrintfLine(DriverStationLCD::kUser_Line1, "In arcade drive");
 		} else {
-			drive->TankDrive(clamp(pilot->GetLeftY(),bot,top), clamp(pilot->GetRightY(),bot,top));
+			drive->TankDrive(clamp(pilot->GetRightY(),bot,top), clamp(pilot->GetLeftY(),bot,top));
 			lcd->PrintfLine(DriverStationLCD::kUser_Line1, "In tank drive");
 		}
 		
@@ -292,7 +292,7 @@ public:
 			shooter->disable_pids();
 			lcd->PrintfLine(DriverStationLCD::kUser_Line2, "Disengaged at: %d%%", (int) (throttle * 100));
 		}
-		
+		/*
 		if (copilot->GetNumberedButtonPressed(FIRE_SHOOTER_BUTTON)){
 				lcd->PrintfLine(DriverStationLCD::kUser_Line3, "firing");
 				shooter->fire();
@@ -302,6 +302,7 @@ public:
 			lcd->PrintfLine(DriverStationLCD::kUser_Line3, "not firing");
 			shooter->stop_firing();	
 		}
+		*/
 		//Gives the copilot control of the shooter throttle
 		
 		if (copilot->GetNumberedButtonPressed(4) && throttle <= 0.95){

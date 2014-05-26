@@ -11,3 +11,9 @@
 *.lai
 *.la
 *.a
+
+2013robot/PPC603gnu
+2013robot/.cproject
+2013robot/.project
+2013robot/.wrmakefile
+2013robot/.wrproject
